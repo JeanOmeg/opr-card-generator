@@ -1,0 +1,15 @@
+{
+  "name": "opr-card-generator",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Standard TCG Card Generator for OnePageRules",
+  "scripts": {
+    "start": "parcel index.html",
+    "build": "parcel build index.html",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "parcel": "^2.12.0",
+    "typescript": "^5.0.0"
+  }
+}
