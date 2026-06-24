@@ -5,10 +5,13 @@
   "description": "Standard TCG Card Generator for OnePageRules",
   "scripts": {
     "start": "parcel index.html",
-    "build": "parcel build index.html",
-    "typecheck": "tsc --noEmit"
+    "build": "parcel build index.html --dist-dir docs --public-url ./",
+    "typecheck": "tsc --noEmit",
+    "api": "yarn --cwd api dev",
+    "dev": "concurrently -n api,web -c blue,magenta \"yarn api\" \"yarn start\""
   },
   "devDependencies": {
+    "concurrently": "^8.2.2",
     "parcel": "^2.12.0",
     "typescript": "^5.0.0"
   }

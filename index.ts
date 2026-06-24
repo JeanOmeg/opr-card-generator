@@ -1,40 +1,122 @@
-interface Rule {
+interface WeaponSpecialRule {
+    type: string;
+    id: string;
     name: string;
+    rating?: number;
     label: string;
-    rating?: string;
+    content?: WeaponSpecialRule[];
 }
 
 interface Weapon {
-    name?: string;
+    id: string;
+    name: string;
+    type: string;
+    range: number;
+    attacks: number;
+    weaponId: string;
+    specialRules: WeaponSpecialRule[];
+    attacksMultiplier: number;
     label: string;
+    count: number;
+    originalCount: number;
+    content?: WeaponSpecialRule[];
+}
+
+interface UnitRule {
+    id: string;
+    name: string;
+    label: string;
+    rating?: number;
+}
+
+interface Bases {
+    round: string;
+    square: string;
 }
 
 interface Unit {
-    name: string;
-    genericName?: string;
+    id: string;
     cost: number;
-    size?: number;
-    quality: number;
+    name: string;
+    size: number;
+    bases?: Bases;
+    items: unknown[];
+    rules: UnitRule[];
+    valid: boolean;
     defense: number;
-    bases?: {
-        round?: number;
-        shape?: string;
-    };
-    rules?: Rule[];
-    weapons?: Weapon[];
+    quality: number;
+    weapons: Weapon[];
+    upgrades: string[];
+    genericName: string;
+    hasCustomRule: boolean;
+    disabledSections: unknown[];
+    hasBalanceInvalid: boolean;
+    originalSize: number;
+    disabledUpgradeSections: unknown[];
+    armyId: string;
+    xp: number;
+    notes: string | null;
+    traits: unknown[];
+    combined: boolean;
+    joinToUnit: string | null;
+    selectionId: string;
+    selectedUpgrades: unknown[];
+    loadout: Weapon[];
+}
+
+interface ArmySpecialRule {
+    id: string;
+    name: string;
+    aliasedRuleId: string | null;
+    description: string;
+    hasRating: boolean | null;
+    coreType: number | null;
+    targetType: number;
+}
+
+interface Spell {
+    id: string;
+    name: string;
+    threshold: number;
+    effect: string;
 }
 
 interface ArmyList {
-    name?: string;
-    units?: Unit[];
+    id: string;
+    name: string;
+    isCloud: boolean;
+    forceOrg: boolean;
+    modified: string;
+    gameSystem: string;
+    modelCount: number;
+    simpleMode: boolean;
+    description: string;
+    pointsLimit: number;
+    campaignMode: boolean;
+    cloudModified: string;
+    narrativeMode: boolean;
+    activationCount: number;
+    includeVehicles: boolean;
+    listPoints: number;
+    units: Unit[];
+    specialRules: ArmySpecialRule[];
+    forceOrgErrors: unknown[];
+    spells?: Spell[];
 }
 
-const API_URL = 'https://army-forge.onepagerules.com/api/tts';
+// Backend relay (see /api). It fetches the Army Forge list AND the core special
+// rules, merges them, and returns the combined army payload — so the table can
+// document rules like Fast/Strider that the raw TTS feed omits.
+// For local dev with the API running, use 'http://localhost:3000'.
+const API_BASE = 'http://localhost:3000';
+const API_URL = `${API_BASE}/army`;
 
 const cardsContainerElement = document.getElementById('cards');
 const inputElementElement = document.getElementById('armyLink');
 const generateButton = document.getElementById('btnGenerate') as HTMLButtonElement | null;
 const printButton = document.getElementById('btnPrint');
+const specialRulesSection = document.getElementById('special-rules');
+const spellsSection = document.getElementById('spells');
 
 if (!(cardsContainerElement instanceof HTMLDivElement)) {
     throw new Error('Missing #cards container.');
@@ -62,36 +144,45 @@ function extractArmyId(value: string): string | null {
     }
 }
 
-function getRules(unit: Unit): Rule[] {
+function getRules(unit: Unit): UnitRule[] {
     return Array.isArray(unit.rules) ? unit.rules : [];
 }
 
+function isWeapon(item: Weapon): boolean {
+    // The loadout mixes real weapons with rules granted by upgrades (e.g.
+    // "Captain", "Horde of Rats"). A real weapon always carries an attack
+    // profile; rule/upgrade grants do not.
+    return typeof item.attacks === 'number';
+}
+
 function getWeapons(unit: Unit): Weapon[] {
-    return Array.isArray(unit.weapons) ? unit.weapons : [];
+    return Array.isArray(unit.loadout) ? unit.loadout.filter(isWeapon) : [];
+}
+
+// Loadout entries that aren't weapons are special rules granted by upgrades
+// (e.g. "Captain", "Scout Master"). They belong under Special Rules.
+function getUpgrades(unit: Unit): Weapon[] {
+    return Array.isArray(unit.loadout) ? unit.loadout.filter((item) => !isWeapon(item)) : [];
+}
+
+function getWeaponSpecialRules(weapon: Weapon): WeaponSpecialRule[] {
+    return Array.isArray(weapon.specialRules) ? weapon.specialRules : [];
 }
 
 function getTough(unit: Unit): string {
     const rule = getRules(unit).find((item) => item.name === 'Tough');
-    return rule?.rating ?? '-';
+    return rule?.rating?.toString() ?? '-';
 }
 
 function getBaseLabel(unit: Unit): string {
     const roundBase = unit.bases?.round;
-    const shape = unit.bases?.shape;
-
-    if (roundBase) {
-        return `Base ${roundBase} mm`;
-    }
-
-    if (shape) {
-        return `Base ${shape}`;
-    }
-
-    return 'Base ?';
+    return roundBase ? `Base ${roundBase} mm` : 'Base ?';
 }
 
 function setMessage(message: string, type: 'loading' | 'error' | 'empty' = 'empty'): void {
     cardsContainer.replaceChildren();
+    specialRulesSection?.replaceChildren();
+    spellsSection?.replaceChildren();
 
     const messageElement = document.createElement('div');
     messageElement.className = `message ${type}`;
@@ -134,45 +225,53 @@ function createRulesContainer(unit: Unit): HTMLDivElement {
     container.className = 'rules-container';
 
     const rules = getRules(unit).filter((rule) => rule.name !== 'Tough');
+    const upgrades = getUpgrades(unit);
 
-    if (rules.length === 0) {
+    if (rules.length === 0 && upgrades.length === 0) {
         container.appendChild(createTextElement('muted', 'No special rules'));
         return container;
     }
 
-    for (const rule of rules) {
+    const addPill = (text: string): void => {
         const pill = document.createElement('span');
         pill.className = 'rule-pill';
-        pill.textContent = rule.label;
+        pill.textContent = text;
         container.appendChild(pill);
-    }
+    };
+
+    for (const rule of rules) addPill(rule.label);
+    for (const upgrade of upgrades) addPill(upgrade.label);
 
     return container;
 }
 
-function getPointsLabel(unit: Unit, copyIndex: number, copies: number): string {
-    if (copies <= 1) {
-        return `${unit.cost} pts`;
-    }
-
-    const basePoints = Math.floor(unit.cost / copies);
-    const remainder = unit.cost % copies;
-    const points = basePoints + (copyIndex < remainder ? 1 : 0);
-
-    return `${points} pts (${unit.cost}/${copies})`;
+function isHero(unit: Unit): boolean {
+    return getRules(unit).some((r) => r.name === 'Hero');
 }
 
-function createCard(unit: Unit, copyIndex: number, copies: number): HTMLDivElement {
+function createCard(unit: Unit): HTMLDivElement {
     const card = document.createElement('div');
     card.className = 'card';
+
+    const hero = isHero(unit);
+    const modelsLabel = unit.size === 1 ? '1 model' : `${unit.size} models`;
+    const costParts = [`${unit.cost} pts`, modelsLabel];
+    if (unit.xp > 0) costParts.push(`XP ${unit.xp}`);
 
     const header = document.createElement('div');
     header.className = 'card-header';
     header.append(
         createTextElement('card-name', unit.name || 'Unnamed unit'),
         createTextElement('card-subtitle', unit.genericName || ''),
-        createTextElement('card-cost', getPointsLabel(unit, copyIndex, copies)),
+        createTextElement('card-cost', costParts.join(' · ')),
     );
+
+    if (hero) {
+        const badge = document.createElement('span');
+        badge.className = 'hero-badge';
+        badge.textContent = '★ Hero';
+        header.appendChild(badge);
+    }
 
     const stats = document.createElement('div');
     stats.className = 'stats';
@@ -204,7 +303,141 @@ function createCard(unit: Unit, copyIndex: number, copies: number): HTMLDivEleme
         weaponsContainer,
     );
 
+    if (unit.notes) {
+        card.appendChild(createTextElement('card-notes', unit.notes));
+    }
+
     return card;
+}
+
+function renderSpecialRulesTable(army: ArmyList): void {
+    if (!specialRulesSection) return;
+    specialRulesSection.replaceChildren();
+
+    const usedIds = new Set<string>();
+    const collect = (entries: WeaponSpecialRule[] | undefined): void => {
+        if (!Array.isArray(entries)) return;
+        for (const entry of entries) {
+            if (entry.id) usedIds.add(entry.id);
+            collect(entry.content);
+        }
+    };
+
+    const units = Array.isArray(army.units) ? army.units : [];
+    for (const unit of units) {
+        for (const rule of getRules(unit)) usedIds.add(rule.id);
+        for (const weapon of getWeapons(unit)) {
+            collect(getWeaponSpecialRules(weapon));
+            collect(weapon.content);
+        }
+        for (const upgrade of getUpgrades(unit)) {
+            collect(getWeaponSpecialRules(upgrade));
+            collect(upgrade.content);
+        }
+    }
+
+    const armySpecialRules = Array.isArray(army.specialRules) ? army.specialRules : [];
+    const sorted = armySpecialRules
+        .filter((r) => usedIds.has(r.id) || (r.aliasedRuleId != null && usedIds.has(r.aliasedRuleId)))
+        .sort((a, b) => a.name.localeCompare(b.name));
+
+    const table = document.createElement('table');
+    table.className = 'special-rules-table';
+
+    const thead = document.createElement('thead');
+
+    // Army name + points live in the table header (instead of a separate box
+    // above the cards) so they print with the rules table and don't push the
+    // cards grid down — that keeps 9 cards per page.
+    const armyRow = document.createElement('tr');
+    const armyCell = document.createElement('th');
+    armyCell.colSpan = 2;
+    armyCell.className = 'army-header-cell';
+    armyCell.append(
+        createTextElement('army-info-name', army.name),
+        createTextElement(
+            'army-info-meta',
+            `${army.listPoints} / ${army.pointsLimit} pts · ${army.gameSystem.toUpperCase()}`,
+        ),
+    );
+    armyRow.appendChild(armyCell);
+    thead.appendChild(armyRow);
+
+    if (sorted.length > 0) {
+        const headerRow = document.createElement('tr');
+        for (const text of ['Rule', 'Description']) {
+            const th = document.createElement('th');
+            th.textContent = text;
+            headerRow.appendChild(th);
+        }
+        thead.appendChild(headerRow);
+    }
+
+    const tbody = document.createElement('tbody');
+    for (const rule of sorted) {
+        const tr = document.createElement('tr');
+
+        const nameTd = document.createElement('td');
+        nameTd.className = 'rule-name';
+        nameTd.textContent = rule.name;
+
+        const descTd = document.createElement('td');
+        descTd.textContent = rule.description;
+
+        tr.append(nameTd, descTd);
+        tbody.appendChild(tr);
+    }
+
+    table.append(thead, tbody);
+    specialRulesSection.append(table);
+}
+
+// Spells live in the army book (the relay attaches them only when the list
+// fields a caster), so the table renders when, and only when, spells are sent.
+function renderSpellsTable(army: ArmyList): void {
+    if (!spellsSection) return;
+    spellsSection.replaceChildren();
+
+    const spells = Array.isArray(army.spells) ? army.spells : [];
+    if (spells.length === 0) return;
+
+    const sorted = [...spells].sort(
+        (a, b) => a.threshold - b.threshold || a.name.localeCompare(b.name),
+    );
+
+    const table = document.createElement('table');
+    table.className = 'special-rules-table spells-table';
+
+    const thead = document.createElement('thead');
+    const headerRow = document.createElement('tr');
+    for (const text of ['Cost', 'Spell', 'Effect']) {
+        const th = document.createElement('th');
+        th.textContent = text;
+        headerRow.appendChild(th);
+    }
+    thead.appendChild(headerRow);
+
+    const tbody = document.createElement('tbody');
+    for (const spell of sorted) {
+        const tr = document.createElement('tr');
+
+        const costTd = document.createElement('td');
+        costTd.className = 'spell-cost';
+        costTd.textContent = spell.threshold.toString();
+
+        const nameTd = document.createElement('td');
+        nameTd.className = 'rule-name';
+        nameTd.textContent = spell.name;
+
+        const effectTd = document.createElement('td');
+        effectTd.textContent = spell.effect;
+
+        tr.append(costTd, nameTd, effectTd);
+        tbody.appendChild(tr);
+    }
+
+    table.append(thead, tbody);
+    spellsSection.append(table);
 }
 
 async function loadArmy(): Promise<void> {
@@ -230,7 +463,10 @@ async function loadArmy(): Promise<void> {
         }
 
         const army = (await response.json()) as ArmyList;
+        localStorage.setItem('lastArmyInput', inputElement.value.trim());
         renderCards(army);
+        renderSpecialRulesTable(army);
+        renderSpellsTable(army);
     } catch (error) {
         console.error(error);
         setMessage(
@@ -253,11 +489,7 @@ function renderCards(army: ArmyList): void {
     }
 
     for (const unit of units) {
-        const copies = Math.max(1, unit.size || 1);
-
-        for (let copyIndex = 0; copyIndex < copies; copyIndex += 1) {
-            cardsContainer.appendChild(createCard(unit, copyIndex, copies));
-        }
+        cardsContainer.appendChild(createCard(unit));
     }
 }
 
@@ -268,3 +500,5 @@ inputElement.addEventListener('keydown', (event) => {
         void loadArmy();
     }
 });
+
+inputElement.value = localStorage.getItem('lastArmyInput') ?? '';

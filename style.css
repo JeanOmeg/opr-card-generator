@@ -40,113 +40,144 @@ body {
 .card {
     width: 63.5mm;
     height: 88.9mm;
-    background: white;
-    border: 2px solid #222;
-    border-radius: 10px;
-    padding: 8px;
+    background: #fff;
+    border: 2px solid #000;
+    border-radius: 6px;
     display: flex;
     flex-direction: column;
     overflow: hidden;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
 }
 
 .card-header {
-    border-bottom: 2px solid #222;
-    padding-bottom: 5px;
+    background: #000;
+    padding: 6px 8px 7px;
+    flex-shrink: 0;
 }
 
 .card-name {
-    font-size: 15px;
+    font-size: 13px;
     font-weight: bold;
+    color: #fff;
+    line-height: 1.2;
     overflow-wrap: anywhere;
 }
 
 .card-subtitle {
-    font-size: 11px;
-    color: #666;
-    min-height: 13px;
+    font-size: 9px;
+    color: #aaa;
+    min-height: 11px;
     overflow-wrap: anywhere;
 }
 
 .card-cost {
     margin-top: 3px;
-    font-size: 13px;
+    font-size: 10px;
     font-weight: bold;
+    color: #fff;
+    letter-spacing: 0.2px;
 }
 
 .base-info {
-    margin-top: 4px;
-    margin-bottom: 6px;
+    background: #eee;
     text-align: center;
-    font-size: 11px;
+    font-size: 9px;
+    color: #333;
+    padding: 2px 8px;
+    border-bottom: 1px solid #ccc;
+    flex-shrink: 0;
 }
 
 .stats {
     display: flex;
-    justify-content: space-between;
-    margin-bottom: 6px;
+    flex-shrink: 0;
+    border-bottom: 1px solid #ccc;
 }
 
 .stat {
     flex: 1;
     text-align: center;
+    padding: 3px 0;
+    border-right: 1px solid #ccc;
+}
+
+.stat:last-child {
+    border-right: none;
 }
 
 .stat-label {
-    font-size: 10px;
+    font-size: 8px;
     color: #666;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
 }
 
 .stat-value {
-    font-size: 22px;
+    font-size: 20px;
     font-weight: bold;
+    color: #000;
+    line-height: 1.15;
 }
 
 .section-title {
-    font-size: 11px;
+    font-size: 8px;
     font-weight: bold;
-    margin-bottom: 4px;
-    margin-top: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: #000;
+    padding: 3px 8px 1px;
+    border-top: 1px solid #ccc;
+    flex-shrink: 0;
 }
 
 .rules-container {
     display: flex;
     flex-wrap: wrap;
-    gap: 3px;
-    margin-bottom: 6px;
+    gap: 2px;
+    padding: 2px 8px 3px;
+    flex-shrink: 0;
 }
 
 .rule-pill {
-    border: 1px solid #999;
+    background: #fff;
+    border: 1px solid #000;
     border-radius: 999px;
-    padding: 2px 6px;
-    font-size: 9px;
+    padding: 1px 5px;
+    font-size: 8px;
+    color: #000;
     overflow-wrap: anywhere;
 }
 
 .weapons-container {
     flex: 1;
     overflow: hidden;
+    padding: 2px 8px 4px;
 }
 
 .weapon {
-    margin-bottom: 5px;
-    font-size: 9px;
+    margin-bottom: 4px;
     overflow-wrap: anywhere;
+    padding-left: 5px;
+    border-left: 2px solid #ccc;
 }
 
 .weapon-name {
     font-weight: bold;
-    font-size: 10px;
+    font-size: 11px;
+    color: #000;
 }
 
-.weapon-label,
+.weapon-label {
+    font-size: 10px;
+    color: #333;
+}
+
 .muted {
     font-size: 9px;
-}
-
-.muted {
-    color: #777;
+    color: #888;
     font-style: italic;
+    padding-left: 8px;
 }
 
 .message {
@@ -178,6 +209,100 @@ body {
     }
 }
 
+/* --- INFO DO EXÉRCITO (cabeçalho da tabela de regras) --- */
+.army-info-name {
+    font-size: 20px;
+    font-weight: bold;
+}
+
+.army-info-meta {
+    font-size: 13px;
+    color: #555;
+    margin-top: 2px;
+}
+
+/* --- HERO BADGE --- */
+.hero-badge {
+    display: inline-block;
+    margin-top: 4px;
+    font-size: 8px;
+    font-weight: bold;
+    color: #fff;
+    border: 1px solid #fff;
+    border-radius: 3px;
+    padding: 1px 4px;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+}
+
+/* --- NOTAS DA UNIDADE --- */
+.card-notes {
+    font-size: 8px;
+    color: #444;
+    font-style: italic;
+    padding: 3px 8px;
+    border-top: 1px solid #ccc;
+}
+
+/* --- TABELA DE REGRAS ESPECIAIS --- */
+.special-rules-section {
+    margin-top: 24px;
+}
+
+.special-rules-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: white;
+    font-size: 13px;
+}
+
+.special-rules-table th,
+.special-rules-table td {
+    border: 1px solid #ccc;
+    padding: 6px 10px;
+    text-align: left;
+    vertical-align: top;
+}
+
+.special-rules-table th {
+    background: #222;
+    color: white;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.special-rules-table .army-header-cell {
+    background: #fff;
+    color: #000;
+    text-transform: none;
+    letter-spacing: normal;
+    padding: 10px;
+    border-bottom: 2px solid #000;
+}
+
+.special-rules-table .rule-name {
+    font-weight: bold;
+    white-space: nowrap;
+    width: 160px;
+}
+
+.special-rules-table tr:nth-child(even) td {
+    background: #f5f5f5;
+}
+
+/* --- TABELA DE MAGIAS (CASTERS) --- */
+.spells-table .spell-cost {
+    font-weight: bold;
+    text-align: center;
+    white-space: nowrap;
+    width: 48px;
+}
+
+.spells-table .rule-name {
+    width: 160px;
+}
+
 /* --- CONFIGURAÇÃO RESTRITA PARA IMPRESSÃO --- */
 @media print {
     @page {
@@ -206,6 +331,21 @@ body {
         page-break-inside: avoid;
         break-inside: avoid;
         margin: 0;
-        border: 1px solid #222; /* Linha um pouco mais fina na impressão para economizar */
+        border: 1px solid #000;
+    }
+
+    .special-rules-section {
+        page-break-inside: avoid;
+        break-inside: avoid;
+        margin-top: 4mm;
+    }
+
+    .special-rules-table {
+        font-size: 11px;
+    }
+
+    .special-rules-table th,
+    .special-rules-table td {
+        padding: 4px 8px;
     }
 }
