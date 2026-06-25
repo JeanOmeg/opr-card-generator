@@ -58,7 +58,7 @@ body {
 }
 
 .card-toolbar {
-  display: none;
+  display: flex;
   flex-direction: column;
   gap: 4px;
   padding: 6px;
@@ -67,8 +67,41 @@ body {
   border-radius: 4px;
 }
 
-.card-wrapper:has(.card--has-image) .card-toolbar {
+.card-toolbar-image-controls {
+  display: none;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.card-wrapper:has(.card--has-image) .card-toolbar-image-controls {
   display: flex;
+}
+
+.card-toolbar-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.toolbar-download {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  font-size: 11px;
+  color: #333;
+  cursor: pointer;
+  background: #f3f3f3;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+.toolbar-download:hover {
+  background: #e8e8e8;
+}
+
+.toolbar-download:disabled {
+  cursor: wait;
+  opacity: 0.6;
 }
 
 .toolbar-row {

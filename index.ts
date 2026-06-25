@@ -1,3 +1,5 @@
+import html2canvas from 'html2canvas';
+
 interface WeaponSpecialRule {
   type: string;
   id: string;
@@ -111,6 +113,7 @@ const cardsContainerElement = document.getElementById('cards');
 const inputElementElement = document.getElementById('armyLink');
 const generateButton = document.getElementById('btnGenerate') as HTMLButtonElement | null;
 const printButton = document.getElementById('btnPrint');
+const downloadAllButton = document.getElementById('btnDownloadAll') as HTMLButtonElement | null;
 const printOptions = document.querySelector('.print-options') as HTMLElement | null;
 const includeCardsCheckbox = document.getElementById('optCards') as HTMLInputElement | null;
 const includeRulesCheckbox = document.getElementById('optRules') as HTMLInputElement | null;
@@ -128,6 +131,13 @@ if (!(inputElementElement instanceof HTMLInputElement)) {
 
 const cardsContainer = cardsContainerElement;
 const inputElement = inputElementElement;
+
+const DEFAULT_DOCUMENT_TITLE = document.title;
+
+function setDocumentTitle(listName?: string): void {
+  const name = listName?.trim();
+  document.title = name ? `${DEFAULT_DOCUMENT_TITLE} - ${name}` : DEFAULT_DOCUMENT_TITLE;
+}
 
 function extractArmyId(value: string): string | null {
   const trimmed = value.trim();
@@ -176,11 +186,13 @@ function getBaseLabel(unit: Unit): string {
 
 function setPrintControlsVisible(visible: boolean): void {
   if (printButton) printButton.style.display = visible ? '' : 'none';
+  if (downloadAllButton) downloadAllButton.style.display = visible ? '' : 'none';
   if (printOptions) printOptions.style.display = visible ? '' : 'none';
 }
 
 function setMessage(message: string, type: 'loading' | 'error' | 'empty' = 'empty'): void {
   setPrintControlsVisible(false);
+  setDocumentTitle();
   cardsContainer.replaceChildren();
   specialRulesSection?.replaceChildren();
   spellsSection?.replaceChildren();
@@ -476,6 +488,70 @@ function createSliderRow(
   return { row, slider };
 }
 
+function sanitizeFilename(name: string): string {
+  const cleaned = name
+    .trim()
+    .replace(/[^a-z0-9_-]+/gi, '_')
+    .replace(/^_+|_+$/g, '');
+  return cleaned || 'card';
+}
+
+async function renderCardToBlob(card: HTMLDivElement): Promise<Blob | null> {
+  const canvas = await html2canvas(card, {
+    scale: 3,
+    useCORS: true,
+    backgroundColor: '#ffffff',
+    ignoreElements: (element) => element.classList.contains('card-bg-remove'),
+  });
+  return new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
+}
+
+function triggerBlobDownload(blob: Blob, filename: string): void {
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = filename;
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  URL.revokeObjectURL(url);
+}
+
+async function downloadCardPng(card: HTMLDivElement, filename: string): Promise<void> {
+  const blob = await renderCardToBlob(card);
+  if (blob) triggerBlobDownload(blob, filename);
+}
+
+async function downloadAllCards(): Promise<void> {
+  const cards = Array.from(cardsContainer.querySelectorAll<HTMLDivElement>('.card'));
+  for (const [index, card] of cards.entries()) {
+    const name = sanitizeFilename(card.dataset.unitName ?? `card-${index + 1}`);
+    const prefix = String(index + 1).padStart(2, '0');
+    await downloadCardPng(card, `${prefix}-${name}.png`);
+  }
+}
+
+function createDownloadButton(card: HTMLDivElement): HTMLButtonElement {
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.className = 'toolbar-download';
+  button.title = 'Download card as PNG';
+  button.setAttribute('aria-label', 'Download card as PNG');
+  button.innerHTML =
+    '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" ' +
+    'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+    '<path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M5 21h14"/></svg>' +
+    '<span>PNG</span>';
+  button.addEventListener('click', () => {
+    const name = sanitizeFilename(card.dataset.unitName ?? 'card');
+    button.disabled = true;
+    void downloadCardPng(card, `${name}.png`).finally(() => {
+      button.disabled = false;
+    });
+  });
+  return button;
+}
+
 function wrapCardWithToolbar(card: HTMLDivElement): HTMLDivElement {
   card.style.setProperty('--card-bg-opacity', DEFAULT_BG_OPACITY.toString());
   applyBgTransform(card);
@@ -487,7 +563,7 @@ function wrapCardWithToolbar(card: HTMLDivElement): HTMLDivElement {
   toolbar.className = 'card-toolbar';
 
   const opacity = createSliderRow(
-    'Opacidade',
+    'Opacity',
     { min: '0', max: '1', step: '0.05', value: DEFAULT_BG_OPACITY.toString() },
     (value) => card.style.setProperty('--card-bg-opacity', value),
   );
@@ -507,11 +583,19 @@ function wrapCardWithToolbar(card: HTMLDivElement): HTMLDivElement {
   const reset = document.createElement('button');
   reset.type = 'button';
   reset.className = 'toolbar-reset';
-  reset.textContent = 'Centralizar';
+  reset.textContent = 'Recenter';
   reset.title = 'Reset zoom and position';
   reset.addEventListener('click', () => resetCardFraming(card));
 
-  toolbar.append(opacity.row, zoom.row, reset);
+  const imageControls = document.createElement('div');
+  imageControls.className = 'card-toolbar-image-controls';
+  imageControls.append(opacity.row, zoom.row, reset);
+
+  const actions = document.createElement('div');
+  actions.className = 'card-toolbar-actions';
+  actions.append(createDownloadButton(card));
+
+  toolbar.append(imageControls, actions);
   wrapper.append(card, toolbar);
   return wrapper;
 }
@@ -519,6 +603,7 @@ function wrapCardWithToolbar(card: HTMLDivElement): HTMLDivElement {
 function createCard(unit: Unit): HTMLDivElement {
   const card = document.createElement('div');
   card.className = 'card';
+  card.dataset.unitName = unit.name || 'Unnamed unit';
 
   const hero = isHero(unit);
   const modelsLabel = unit.size === 1 ? '1 model' : `${unit.size} models`;
@@ -533,19 +618,12 @@ function createCard(unit: Unit): HTMLDivElement {
     createTextElement('card-cost', costParts.join(' · ')),
   );
 
-  if (hero) {
-    const badge = document.createElement('span');
-    badge.className = 'hero-badge';
-    badge.textContent = '★ Hero';
-    header.appendChild(badge);
-  }
-
   const stats = document.createElement('div');
   stats.className = 'stats';
   stats.append(
-    createStat('Q', `${unit.quality}+`),
-    createStat('D', `${unit.defense}+`),
-    createStat('T', getTough(unit)),
+    createStat('Quality', `${unit.quality}+`),
+    createStat('Defense', `${unit.defense}+`),
+    createStat('Tough', getTough(unit)),
   );
 
   const weaponsContainer = document.createElement('div');
@@ -756,11 +834,19 @@ function renderCards(army: ArmyList): void {
     cardsContainer.appendChild(wrapCardWithToolbar(createCard(unit)));
   }
 
+  setDocumentTitle(army.name);
   setPrintControlsVisible(true);
 }
 
 generateButton?.addEventListener('click', loadArmy);
 printButton?.addEventListener('click', () => window.print());
+downloadAllButton?.addEventListener('click', () => {
+  if (!downloadAllButton) return;
+  downloadAllButton.disabled = true;
+  void downloadAllCards().finally(() => {
+    downloadAllButton.disabled = false;
+  });
+});
 
 function bindPrintToggle(checkbox: HTMLInputElement | null, bodyClass: string): void {
   if (!checkbox) return;
