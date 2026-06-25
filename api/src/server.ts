@@ -1,17 +1,10 @@
 import express from 'express';
 import cors from 'cors';
 
-// --- OnePageRules upstream endpoints ---------------------------------------
-// The TTS endpoint sends a permissive CORS header, but /api/rules/common/{id}
-// (where the core rule descriptions live) does not. This relay fetches both
-// server-side — where CORS doesn't apply — joins them, and returns one payload
-// to the static front-end. OPR is fine with this for free, non-monetized
-// community use.
 const OPR_TTS_URL = 'https://army-forge.onepagerules.com/api/tts';
 const OPR_COMMON_RULES_URL = 'https://army-forge.onepagerules.com/api/rules/common';
 const OPR_ARMY_BOOKS_URL = 'https://army-forge.onepagerules.com/api/army-books';
 
-// OnePageRules game-system slug -> numeric id used by the common-rules endpoint.
 const GAME_SYSTEM_IDS: Record<string, number> = {
     gf: 2,
     gff: 3,
@@ -33,9 +26,6 @@ interface UnitLike {
     loadout?: RuleLike[];
 }
 
-// Spell as returned by the army-book endpoint. We forward only the fields the
-// card table needs; the upstream entry also carries cost formulas, generation
-// metadata, etc. that the front-end doesn't use.
 interface Spell {
     id?: string;
     name?: string;
@@ -55,8 +45,6 @@ interface ArmyPayload {
     [key: string]: unknown;
 }
 
-// Best-effort: never throws, returns [] on any failure so a common-rules outage
-// degrades to "army-book rules only" instead of failing the whole request.
 async function fetchCommonRules(gameSystem: string | undefined): Promise<RuleLike[]> {
     const id = gameSystem ? GAME_SYSTEM_IDS[gameSystem.toLowerCase()] : undefined;
     if (id === undefined) return [];
@@ -72,8 +60,6 @@ async function fetchCommonRules(gameSystem: string | undefined): Promise<RuleLik
     }
 }
 
-// The "Caster(X)" rule can sit directly on a unit or be granted by an upgrade,
-// in which case it lives nested inside a loadout entry's `content`. Scan both.
 function hasCasterRule(rules: RuleLike[] | undefined): boolean {
     if (!Array.isArray(rules)) return false;
     return rules.some((rule) => rule.name === 'Caster' || hasCasterRule(rule.content));
@@ -83,9 +69,6 @@ function unitHasCaster(unit: UnitLike): boolean {
     return hasCasterRule(unit.rules) || hasCasterRule(unit.loadout);
 }
 
-// Spells are defined per army book, not in the TTS feed, so we only fetch the
-// books whose units actually field a caster. Best-effort: a failed fetch just
-// contributes no spells rather than failing the whole request.
 async function fetchSpells(army: ArmyPayload): Promise<Spell[]> {
     const id = army.gameSystem ? GAME_SYSTEM_IDS[army.gameSystem.toLowerCase()] : undefined;
     if (id === undefined) return [];
@@ -132,8 +115,6 @@ async function fetchSpells(army: ArmyPayload): Promise<Spell[]> {
     return spells;
 }
 
-// Appends the core rules into the army's specialRules list so the front-end can
-// document them in its table. Army-book entries win on id collisions.
 function mergeRules(army: ArmyPayload, commonRules: RuleLike[]): ArmyPayload {
     const armySpecialRules = Array.isArray(army.specialRules) ? army.specialRules : [];
     const seen = new Set(armySpecialRules.map((rule) => rule.id));
@@ -151,17 +132,12 @@ function mergeRules(army: ArmyPayload, commonRules: RuleLike[]): ArmyPayload {
 
 const app = express();
 
-// Allow the static front-end (GitHub Pages, localhost, etc.) to call this API.
-// The data is public, so a wildcard origin is fine; restrict it if you prefer.
 app.use(cors());
 
 app.get('/health', (_req, res) => {
     res.json({ ok: true });
 });
 
-// GET /army?id=<armyId>
-// Fetches the army from Army Forge, enriches its specialRules with the core
-// rule descriptions, and returns the combined army payload.
 app.get('/army', async (req, res) => {
     const id = String(req.query.id ?? '').trim();
     if (!id) {
