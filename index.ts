@@ -1,5 +1,5 @@
 import { extractArmyId, fetchArmy } from './src/api';
-import { deleteList, getLists, saveList, type SavedList } from './src/db';
+import { deleteList, getList, getLists, saveList, type SavedList } from './src/db';
 import {
   downloadAllCards,
   renderCards,
@@ -15,6 +15,7 @@ const inputElementElement = document.getElementById('armyLink');
 const generateButton = document.getElementById('btnGenerate') as HTMLButtonElement | null;
 const printButton = document.getElementById('btnPrint');
 const downloadAllButton = document.getElementById('btnDownloadAll') as HTMLButtonElement | null;
+const refreshButton = document.getElementById('btnRefresh') as HTMLButtonElement | null;
 const printOptions = document.querySelector('.print-options') as HTMLElement | null;
 const includeCardsCheckbox = document.getElementById('optCards') as HTMLInputElement | null;
 const includeRulesCheckbox = document.getElementById('optRules') as HTMLInputElement | null;
@@ -36,6 +37,10 @@ const inputElement = inputElementElement;
 
 const DEFAULT_DOCUMENT_TITLE = document.title;
 
+// The army currently on screen, so "Refresh List" knows what to re-fetch.
+let currentArmyId: string | null = null;
+let currentInput = '';
+
 function setDocumentTitle(listName?: string): void {
   const name = listName?.trim();
   document.title = name ? `${DEFAULT_DOCUMENT_TITLE} - ${name}` : DEFAULT_DOCUMENT_TITLE;
@@ -44,6 +49,7 @@ function setDocumentTitle(listName?: string): void {
 function setPrintControlsVisible(visible: boolean): void {
   if (printButton) printButton.style.display = visible ? '' : 'none';
   if (downloadAllButton) downloadAllButton.style.display = visible ? '' : 'none';
+  if (refreshButton) refreshButton.style.display = visible ? '' : 'none';
   if (printOptions) printOptions.style.display = visible ? '' : 'none';
 }
 
@@ -61,7 +67,10 @@ function setMessage(message: string, type: 'loading' | 'error' | 'empty' = 'empt
   cardsContainer.appendChild(messageElement);
 }
 
-function displayArmy(army: ArmyList): void {
+function displayArmy(army: ArmyList, input: string): void {
+  currentArmyId = army.id || null;
+  currentInput = input;
+
   const unitCount = renderCards(cardsContainer, army);
 
   if (unitCount === 0) {
@@ -75,26 +84,18 @@ function displayArmy(army: ArmyList): void {
   if (spellsSection) renderSpellsTable(spellsSection, army);
 }
 
-async function loadArmy(): Promise<void> {
-  const armyId = extractArmyId(inputElement.value);
-
-  if (!armyId) {
-    setMessage('Paste a shared Army Forge link or list ID.', 'error');
-    inputElement.focus();
-    return;
-  }
-
+/** Fetch from the relay, then render and cache the result. */
+async function fetchAndShow(armyId: string, input: string): Promise<void> {
   setMessage('Loading army list...', 'loading');
   generateButton?.setAttribute('disabled', 'true');
 
   try {
     const army = await fetchArmy(armyId);
-    localStorage.setItem('lastArmyInput', inputElement.value.trim());
-    displayArmy(army);
+    displayArmy(army, input);
 
     if (army.id) {
       try {
-        await saveList(army, inputElement.value.trim());
+        await saveList(army, input);
       } catch (saveError) {
         console.error('Failed to save list:', saveError);
       }
@@ -110,7 +111,59 @@ async function loadArmy(): Promise<void> {
   }
 }
 
+async function loadArmy(): Promise<void> {
+  const input = inputElement.value.trim();
+  const armyId = extractArmyId(input);
+
+  if (!armyId) {
+    setMessage('Paste a shared Army Forge link or list ID.', 'error');
+    inputElement.focus();
+    return;
+  }
+
+  localStorage.setItem('lastArmyInput', input);
+
+  // Cache-first: if this list is already saved, show it instantly (works
+  // offline). The user clicks "Refresh List" to pull the latest when needed.
+  try {
+    const cached = await getList(armyId);
+    if (cached) {
+      displayArmy(cached.payload, cached.input);
+      return;
+    }
+  } catch (error) {
+    console.error('Failed to read cached list:', error);
+  }
+
+  await fetchAndShow(armyId, input);
+}
+
+/** Re-fetch the army on screen from the relay and refresh the cached copy. */
+async function refreshArmy(): Promise<void> {
+  if (!currentArmyId) return;
+
+  const id = currentArmyId;
+  const input = currentInput || id;
+  refreshButton?.setAttribute('disabled', 'true');
+
+  try {
+    const army = await fetchArmy(id);
+    displayArmy(army, input);
+    try {
+      await saveList(army, input);
+    } catch (saveError) {
+      console.error('Failed to save list:', saveError);
+    }
+  } catch (error) {
+    console.error(error);
+    window.alert('Could not refresh this list. Check your connection and try again.');
+  } finally {
+    refreshButton?.removeAttribute('disabled');
+  }
+}
+
 generateButton?.addEventListener('click', loadArmy);
+refreshButton?.addEventListener('click', () => void refreshArmy());
 printButton?.addEventListener('click', () => window.print());
 downloadAllButton?.addEventListener('click', () => {
   if (!downloadAllButton) return;
@@ -142,7 +195,7 @@ const listsCallbacks: ListsViewCallbacks = {
   onLoad: (saved: SavedList) => {
     inputElement.value = saved.input;
     localStorage.setItem('lastArmyInput', saved.input);
-    displayArmy(saved.payload);
+    displayArmy(saved.payload, saved.input);
     window.location.hash = '#/';
   },
   onRefresh: async (saved: SavedList) => {

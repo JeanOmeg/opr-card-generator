@@ -20,7 +20,9 @@ download as PNGs.
 - **Print** layout (choose cards / rules / spells) and **PNG** download (single or all).
 - **My Lists** — every generated list is saved locally (IndexedDB via Localbase) so you can
   reload it instantly, refresh it on demand, or delete it.
-- **FAQ** page explaining the workflow.
+- **Cache-first loading** — *Generate Cards* opens a previously loaded list instantly from your
+  saved copy (works offline); use **Refresh List** to pull the latest version from Army Forge.
+- **FAQ**, **Changelog**, and **About** pages.
 
 ## Project structure
 

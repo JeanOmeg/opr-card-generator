@@ -19,6 +19,7 @@
       <div class=controls>
         <input id=armyLink aria-label="Army Forge shared link or list ID" placeholder="Paste your shared Army Forge link or list ID...">
         <button id=btnGenerate>Generate Cards</button>
+        <button id=btnRefresh title="Pull the latest version from Army Forge">Refresh List</button>
         <button id=btnPrint>Print</button>
         <button id=btnDownloadAll>Download All</button>
       </div>
@@ -53,7 +54,16 @@
         <p class=faq-a>
           In Army Forge, open your army and click <strong>“Share as Link”</strong>. Copy the link it
           gives you, paste it into the box on the Home page (the bare list ID also works), and click
-          <strong>Generate Cards</strong>.
+          <strong>Generate Cards</strong>. If you've loaded that list before, it opens instantly from
+          your saved copy — no download needed.
+        </p>
+
+        <h2 class=faq-q>My cards look out of date — how do I update them?</h2>
+        <p class=faq-a>
+          Cards open from your saved copy for speed, so changes you made in Army Forge afterwards won't
+          show until you re-download the list. Click <strong>Refresh List</strong> on the Home page (or
+          <strong>Refresh</strong> in <strong>My Lists</strong>) to pull the latest version from Army
+          Forge and update your saved copy.
         </p>
 
         <h2 class=faq-q>Why won't my list load?</h2>
@@ -103,6 +113,10 @@
             hiding how many of each weapon the unit carries.</li>
           <li>Items that are actually weapons (such as <strong>Weapon Team</strong>) now appear in the
             <strong>Weapons</strong> section instead of being listed under Special Rules.</li>
+          <li><strong>Generate Cards</strong> now loads instantly from your saved copy when the list is
+            already cached — use the new <strong>Refresh List</strong> button to pull the latest version
+            from Army Forge when you need it.</li>
+          <li>Added <strong>Changelog</strong> and <strong>About</strong> pages.</li>
         </ul>
       </div>
     </section>
@@ -136,7 +150,10 @@
             download (single or all).</li>
           <li><strong>My Lists</strong> — every generated list is saved locally on your device so you
             can reload it instantly, refresh it on demand, or delete it.</li>
-          <li><strong>FAQ</strong> page explaining the workflow.</li>
+          <li><strong>Cache-first loading</strong> — Generate Cards opens a previously loaded list
+            instantly from your saved copy (works offline); use <strong>Refresh List</strong> to pull
+            the latest version from Army Forge.</li>
+          <li><strong>FAQ</strong>, <strong>Changelog</strong>, and <strong>About</strong> pages.</li>
         </ul>
 
         <h2 class=about-h>Disclaimer</h2>
@@ -161,7 +178,7 @@
     </section>
   </main>
 
-  <script type=module src=opr-card-generator.e6de6da8.js></script>
+  <script type=module src=opr-card-generator.69fd64d4.js></script>
 
 
 
