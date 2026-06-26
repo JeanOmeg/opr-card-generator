@@ -1,14 +1,22 @@
-<!DOCTYPE html><html lang=pt-BR><meta charset=UTF-8><meta name=viewport content="width=device-width, initial-scale=1.0"><title>OPR Card Generator</title><link rel=stylesheet href=opr-card-generator.6b0f83ad.css><body>
+<!DOCTYPE html><html lang=en><meta charset=UTF-8><meta name=viewport content="width=device-width, initial-scale=1.0"><title>OPR Card Generator</title><link rel=stylesheet href=opr-card-generator.8a4ddcb4.css><body>
 
-    <div class=controls>
-        <input id=armyLink aria-label="Army Forge shared link or list ID" placeholder="Paste your shared Army Forge link or list ID...">
-        <button id=btnGenerate>Generate Cards</button>
-        <button id=btnPrint>Print</button>
-    </div>
+  <div class=controls>
+    <input id=armyLink aria-label="Army Forge shared link or list ID" placeholder="Paste your shared Army Forge link or list ID...">
+    <button id=btnGenerate>Generate Cards</button>
+    <button id=btnPrint>Print</button>
+    <button id=btnDownloadAll>Download All</button>
+  </div>
 
-    <div id=cards class=cards></div>
-    <div id=special-rules class=special-rules-section></div>
+  <div class=print-options>
+    <label><input type=checkbox id=optCards checked> Include cards in print</label>
+    <label><input type=checkbox id=optRules checked> Include rules table in print</label>
+    <label><input type=checkbox id=optSpells checked> Include spells table in print</label>
+  </div>
 
-    <script type=module src=opr-card-generator.ff33db23.js></script>
+  <div id=cards class=cards></div>
+  <div id=special-rules class=special-rules-section></div>
+  <div id=spells class=special-rules-section></div>
+
+  <script type=module src=opr-card-generator.15ec217d.js></script>
 
 

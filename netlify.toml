@@ -1,0 +1,23 @@
+# Netlify config for the OPR Card Generator relay.
+#
+# The static front-end is hosted on GitHub Pages (built into ./docs). Netlify
+# hosts ONLY the relay function — the browser calls it cross-origin, so the
+# function sends CORS headers (see netlify/functions/army.mts). The function and
+# the local Express server (api/) share api/src/relay.ts.
+
+[build]
+  # No site build here — the front-end lives on GitHub Pages. Netlify still
+  # bundles the functions automatically. `netlify/site` is just a status page.
+  command = "echo 'Relay functions only — front-end is on GitHub Pages.'"
+  publish = "netlify/site"
+  functions = "netlify/functions"
+
+[build.environment]
+  NODE_VERSION = "20"
+
+[functions]
+  # esbuild bundles the TypeScript function and the shared relay module.
+  node_bundler = "esbuild"
+
+# Routing for /army and /health is declared in-code via each function's
+# `config.path` (Netlify Functions v2), so no redirects are needed here.

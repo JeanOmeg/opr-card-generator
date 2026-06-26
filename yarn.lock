@@ -88,6 +88,18 @@
   resolved "https://registry.yarnpkg.com/@msgpackr-extract/msgpackr-extract-win32-x64/-/msgpackr-extract-win32-x64-3.0.4.tgz#a1c79dcc9ae5f8c02aea8c2f144e5af6a822e5e8"
   integrity sha512-CmCXPQrkbwExx3j946/PtHWHbYJiCRBRDl4BlkRQcJB/YOwQxJRTpoo7aTsortjgoJ1x7opzTSxn7C+ASSLVjQ==
 
+"@netlify/functions@^5.3.0":
+  version "5.3.0"
+  resolved "https://registry.yarnpkg.com/@netlify/functions/-/functions-5.3.0.tgz#1127daca7fd82073d17d6e01343da3ffe7f4675c"
+  integrity sha512-FP+xCoZMkMOUsKa4UdG/oiK/2md1/TxuXvqqieaMVMgDbFFMaHI8h0oHCViUY73kPbKV6HyzayaSXGYXKpBSoQ==
+  dependencies:
+    "@netlify/types" "2.8.0"
+
+"@netlify/types@2.8.0":
+  version "2.8.0"
+  resolved "https://registry.yarnpkg.com/@netlify/types/-/types-2.8.0.tgz#50832cc34ee6173d1c9efb35b09b84b17df603cc"
+  integrity sha512-8/g0Pt6y6wXj5Ia5eeYLiXhRfWeqZXGXpGFeCiiQdUOem+FPtXdA4+YdGxqzWc7D0AvptKSO01KGeeVWHSu8Kg==
+
 "@parcel/bundler-default@2.16.4":
   version "2.16.4"
   resolved "https://registry.yarnpkg.com/@parcel/bundler-default/-/bundler-default-2.16.4.tgz#e4a273ef224b974eab3981a94873f760ef35184b"

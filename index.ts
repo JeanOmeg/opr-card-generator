@@ -106,7 +106,18 @@ interface ArmyList {
   spells?: Spell[];
 }
 
-const API_BASE = 'http://localhost:3000';
+// The front-end is hosted on GitHub Pages and the relay runs as a Netlify
+// Function on a different origin, so production calls the relay by its absolute
+// URL (and the function sends CORS headers). During local dev the front-end is
+// served by Parcel while the relay runs as the Express server on port 3000.
+//
+// After your first Netlify deploy, replace this with your site URL — e.g.
+// https://opr-card-relay.netlify.app — with no trailing slash.
+const PROD_RELAY_BASE = 'https://YOUR-SITE.netlify.app';
+
+const isLocalDev =
+  window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+const API_BASE = isLocalDev ? 'http://localhost:3000' : PROD_RELAY_BASE;
 const API_URL = `${API_BASE}/army`;
 
 const cardsContainerElement = document.getElementById('cards');
@@ -795,7 +806,7 @@ async function loadArmy(): Promise<void> {
   generateButton?.setAttribute('disabled', 'true');
 
   try {
-    const url = new URL(API_URL);
+    const url = new URL(API_URL, window.location.origin);
     url.searchParams.set('id', armyId);
 
     const response = await fetch(url);
