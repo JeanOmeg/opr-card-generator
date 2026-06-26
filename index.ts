@@ -8,6 +8,7 @@ import {
 } from './src/render';
 import { initRouter, onRouteEnter } from './src/router';
 import type { ArmyList } from './src/types';
+import { renderChangelog } from './src/views/changelog';
 import { renderListsView, type ListsViewCallbacks } from './src/views/lists';
 
 const cardsContainerElement = document.getElementById('cards');
@@ -23,6 +24,7 @@ const includeSpellsCheckbox = document.getElementById('optSpells') as HTMLInputE
 const specialRulesSection = document.getElementById('special-rules');
 const spellsSection = document.getElementById('spells');
 const listsView = document.getElementById('view-lists');
+const changelogEntries = document.getElementById('changelog-entries');
 
 if (!(cardsContainerElement instanceof HTMLDivElement)) {
   throw new Error('Missing #cards container.');
@@ -223,6 +225,8 @@ async function refreshListsView(): Promise<void> {
 onRouteEnter('/lists', () => {
   void refreshListsView();
 });
+
+if (changelogEntries) renderChangelog(changelogEntries);
 
 inputElement.value = localStorage.getItem('lastArmyInput') ?? '';
 setPrintControlsVisible(false);

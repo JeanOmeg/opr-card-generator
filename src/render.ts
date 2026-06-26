@@ -1,6 +1,6 @@
 import html2canvas from 'html2canvas';
 
-import type { ArmyList, Unit, Weapon, WeaponSpecialRule } from './types';
+import type { ArmySpecialRule, ArmyList, Unit, Weapon, WeaponSpecialRule } from './types';
 
 // --- Unit data helpers -------------------------------------------------------
 
@@ -30,6 +30,21 @@ function getUpgrades(unit: Unit): Weapon[] {
 
 function getWeaponSpecialRules(weapon: Weapon): WeaponSpecialRule[] {
   return Array.isArray(weapon.specialRules) ? weapon.specialRules : [];
+}
+
+// Army Forge sometimes omits an upgrade's `label`. When it does, rebuild it from
+// the item name plus the rules it grants (its `content`), e.g. a Combat Shield
+// with no label becomes "Combat Shield (Shielded)" — matching items that ship a
+// label. Falls back to the bare name when there are no granted rules to show.
+function getUpgradeLabel(upgrade: Weapon): string {
+  if (upgrade.label?.trim()) return upgrade.label;
+
+  const name = upgrade.name?.trim() ?? '';
+  const granted = (Array.isArray(upgrade.content) ? upgrade.content : [])
+    .map((rule) => rule.label?.trim() || rule.name?.trim() || '')
+    .filter(Boolean);
+
+  return granted.length > 0 ? `${name} (${granted.join(', ')})` : name;
 }
 
 function getTough(unit: Unit): string {
@@ -80,14 +95,17 @@ function createRulesContainer(unit: Unit): HTMLDivElement {
   }
 
   const addPill = (text: string): void => {
+    // Skip blanks so a label-less entry never renders as an empty pill.
+    const label = text?.trim() || '';
+    if (!label) return;
     const pill = document.createElement('span');
     pill.className = 'rule-pill';
-    pill.textContent = text;
+    pill.textContent = label;
     container.appendChild(pill);
   };
 
-  for (const rule of rules) addPill(rule.label);
-  for (const upgrade of upgrades) addPill(upgrade.label);
+  for (const rule of rules) addPill(rule.label || rule.name);
+  for (const upgrade of upgrades) addPill(getUpgradeLabel(upgrade));
 
   return container;
 }
@@ -513,6 +531,44 @@ export function renderCards(container: HTMLDivElement, army: ArmyList): number {
   return units.length;
 }
 
+function escapeRegExp(text: string): string {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+// Aura rules grant another rule only in their prose description (e.g.
+// "Reanimation Aura" reads "...get Reanimation") with no structural link in the
+// data. For each shown Aura, pull in the army rule it names so that rule's
+// description appears in the table too instead of dangling. Scoped to Auras on
+// purpose: that's effectively the only place this prose-only grant shows up, and
+// scanning every rule would drag in unrelated rules merely mentioned in passing.
+function isAura(rule: ArmySpecialRule): boolean {
+  return /\bAura\b/i.test(rule.name ?? '');
+}
+
+function expandAuraRules(
+  included: ArmySpecialRule[],
+  allRules: ArmySpecialRule[],
+): ArmySpecialRule[] {
+  const candidates = allRules.filter((rule) => rule.name && rule.description);
+  const result = [...included];
+  const seenIds = new Set(included.map((rule) => rule.id));
+
+  for (const aura of included.filter(isAura)) {
+    const description = aura.description ?? '';
+    for (const candidate of candidates) {
+      if (seenIds.has(candidate.id)) continue;
+      // Whole-word, case-sensitive: descriptions name other rules capitalized,
+      // which keeps common lowercase words from matching by accident.
+      if (new RegExp(`\\b${escapeRegExp(candidate.name)}\\b`).test(description)) {
+        seenIds.add(candidate.id);
+        result.push(candidate);
+      }
+    }
+  }
+
+  return result;
+}
+
 export function renderSpecialRulesTable(section: HTMLElement, army: ArmyList): void {
   section.replaceChildren();
 
@@ -539,9 +595,12 @@ export function renderSpecialRulesTable(section: HTMLElement, army: ArmyList): v
   }
 
   const armySpecialRules = Array.isArray(army.specialRules) ? army.specialRules : [];
-  const sorted = armySpecialRules
-    .filter((r) => usedIds.has(r.id) || (r.aliasedRuleId != null && usedIds.has(r.aliasedRuleId)))
-    .sort((a, b) => a.name.localeCompare(b.name));
+  const used = armySpecialRules.filter(
+    (r) => usedIds.has(r.id) || (r.aliasedRuleId != null && usedIds.has(r.aliasedRuleId)),
+  );
+  const sorted = expandAuraRules(used, armySpecialRules).sort((a, b) =>
+    a.name.localeCompare(b.name),
+  );
 
   const table = document.createElement('table');
   table.className = 'special-rules-table';

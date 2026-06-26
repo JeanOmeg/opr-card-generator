@@ -1,0 +1,13 @@
+[
+  {
+    "date": "June 26, 2026",
+    "items": [
+      "Fixed upgrades that arrived without a label (e.g. **Combat Shield**) showing up as an empty blank pill; they now display their name plus the rule they grant, e.g. **Combat Shield (Shielded)**.",
+      "Aura rules that grant another rule (e.g. **Reanimation Aura** grants **Reanimation**) now also list that granted rule in the special-rules table instead of leaving it undefined.",
+      "Weapons now show their quantity (e.g. **8x Rifle (24\", A1)**) instead of hiding how many of each weapon the unit carries.",
+      "Items that are actually weapons (such as **Weapon Team**) now appear in the **Weapons** section instead of being listed under Special Rules.",
+      "**Generate Cards** now loads instantly from your saved copy when the list is already cached — use the new **Refresh List** button to pull the latest version from Army Forge when you need it.",
+      "Added **Changelog** and **About** pages."
+    ]
+  }
+]
