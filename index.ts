@@ -113,7 +113,7 @@ interface ArmyList {
 //
 // After your first Netlify deploy, replace this with your site URL — e.g.
 // https://opr-card-relay.netlify.app — with no trailing slash.
-const PROD_RELAY_BASE = 'https://YOUR-SITE.netlify.app';
+const PROD_RELAY_BASE = 'https://opr-card-generator.netlify.app';
 
 const isLocalDev =
   window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
