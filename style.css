@@ -129,6 +129,76 @@ body.nav-open .nav-overlay {
   color: #333;
 }
 
+#view-changelog,
+#view-about {
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+.changelog-intro {
+  margin: 0 0 22px;
+  font-size: 14px;
+  color: #666;
+}
+
+.changelog-entry {
+  padding-bottom: 18px;
+  margin-bottom: 18px;
+  border-bottom: 1px solid #eee;
+}
+
+.changelog-entry:last-child {
+  border-bottom: none;
+}
+
+.changelog-date {
+  font-size: 16px;
+  margin: 0 0 8px;
+}
+
+.changelog-list {
+  margin: 0;
+  padding-left: 20px;
+  font-size: 14px;
+  line-height: 1.6;
+  color: #333;
+}
+
+.changelog-list li {
+  margin-bottom: 6px;
+}
+
+.about-lead {
+  margin: 0 0 12px;
+  font-size: 15px;
+  line-height: 1.6;
+  color: #222;
+}
+
+.about-text {
+  margin: 0 0 12px;
+  font-size: 14px;
+  line-height: 1.6;
+  color: #333;
+}
+
+.about-h {
+  font-size: 16px;
+  margin: 22px 0 8px;
+}
+
+.about-list {
+  margin: 0;
+  padding-left: 20px;
+  font-size: 14px;
+  line-height: 1.6;
+  color: #333;
+}
+
+.about-list li {
+  margin-bottom: 6px;
+}
+
 .saved-lists {
   display: flex;
   flex-direction: column;

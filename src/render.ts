@@ -8,8 +8,16 @@ function getRules(unit: Unit) {
   return Array.isArray(unit.rules) ? unit.rules : [];
 }
 
+// A plain weapon exposes `attacks` directly. Bundled items (e.g. "Weapon Team")
+// come through as an ArmyBookItem with no top-level `attacks` — the weapon lives
+// nested in `content` — so we recurse to still treat those as weapons.
+function hasWeaponProfile(item: { attacks?: number; content?: WeaponSpecialRule[] }): boolean {
+  if (typeof item.attacks === 'number') return true;
+  return Array.isArray(item.content) && item.content.some(hasWeaponProfile);
+}
+
 function isWeapon(item: Weapon): boolean {
-  return typeof item.attacks === 'number';
+  return hasWeaponProfile(item);
 }
 
 function getWeapons(unit: Unit): Weapon[] {
@@ -54,7 +62,9 @@ function createStat(label: string, value: string): HTMLDivElement {
 }
 
 function createWeaponElement(weapon: Weapon): HTMLDivElement {
-  return createTextElement('weapon-chip', weapon.label);
+  const count = typeof weapon.count === 'number' ? weapon.count : 0;
+  const label = count > 0 ? `${count}x ${weapon.label}` : weapon.label;
+  return createTextElement('weapon-chip', label);
 }
 
 function createRulesContainer(unit: Unit): HTMLDivElement {

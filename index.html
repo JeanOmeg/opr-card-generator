@@ -20,6 +20,8 @@
     <a href="#/" data-route="/" class="nav-link">Home</a>
     <a href="#/lists" data-route="/lists" class="nav-link">My Lists</a>
     <a href="#/faq" data-route="/faq" class="nav-link">FAQ</a>
+    <a href="#/changelog" data-route="/changelog" class="nav-link">Changelog</a>
+    <a href="#/about" data-route="/about" class="nav-link">About</a>
   </nav>
   <div id="nav-overlay" class="nav-overlay"></div>
 
@@ -98,6 +100,75 @@
           <strong>My Lists</strong> you can <strong>Load</strong> one instantly from your saved copy,
           <strong>Refresh</strong> it to pull the latest version from Army Forge (this only happens
           when you click it), or <strong>Delete</strong> it.
+        </p>
+      </div>
+    </section>
+
+    <section id="view-changelog" data-view="/changelog" hidden>
+      <h1 class="view-title">Changelog</h1>
+      <p class="changelog-intro">What's new in OPR Card Generator. Newest changes first.</p>
+
+      <div class="changelog-entry">
+        <h2 class="changelog-date">June 26, 2026</h2>
+        <ul class="changelog-list">
+          <li>Weapons now show their quantity (e.g. <strong>8x Rifle (24", A1)</strong>) instead of
+            hiding how many of each weapon the unit carries.</li>
+          <li>Items that are actually weapons (such as <strong>Weapon Team</strong>) now appear in the
+            <strong>Weapons</strong> section instead of being listed under Special Rules.</li>
+        </ul>
+      </div>
+    </section>
+
+    <section id="view-about" data-view="/about" hidden>
+      <h1 class="view-title">About</h1>
+
+      <div class="about-section">
+        <p class="about-lead">
+          A small web app that turns a shared <a href="https://army-forge.onepagerules.com"
+            target="_blank" rel="noopener">Army Forge</a> list into printable, TCG-sized unit cards
+          for <a href="https://onepagerules.com" target="_blank" rel="noopener">OnePageRules</a> games.
+        </p>
+        <p class="about-text">
+          Paste a shared army link, get one card per unit (stats, special rules, weapons), plus a
+          combined special-rules table and a spells table — ready to print or download as PNGs.
+        </p>
+
+        <div class="faq-callout">
+          <strong>Note:</strong> a list only loads if you shared it in Army Forge — open your army and
+          click <strong>“Share as Link”</strong> first. Private (unshared) lists cannot be read.
+        </div>
+
+        <h2 class="about-h">Features</h2>
+        <ul class="about-list">
+          <li>One printable card per unit: Quality / Defense / Tough, special rules, weapons, notes.</li>
+          <li>Combined <strong>special-rules table</strong> (including core/common rule descriptions)
+            and a <strong>spells table</strong> for casters.</li>
+          <li>Per-card <strong>background image</strong> with drag-to-move, scroll/slider zoom, opacity
+            and recenter.</li>
+          <li><strong>Print</strong> layout (choose cards / rules / spells) and <strong>PNG</strong>
+            download (single or all).</li>
+          <li><strong>My Lists</strong> — every generated list is saved locally on your device so you
+            can reload it instantly, refresh it on demand, or delete it.</li>
+          <li><strong>FAQ</strong> page explaining the workflow.</li>
+        </ul>
+
+        <h2 class="about-h">Disclaimer</h2>
+        <p class="about-text">
+          This is a <strong>free, non-profit project made by a fan, for fans</strong>. It is not
+          affiliated with, endorsed by, or sponsored by OnePageRules.
+        </p>
+        <p class="about-text">
+          OnePageRules and all of its game systems, rules, and content (Grimdark Future, Age of
+          Fantasy, and others) are the property of <strong>OnePageRules</strong>. This tool only helps
+          players display their own army lists, and is offered free of charge for non-commercial
+          community use.
+        </p>
+
+        <h2 class="about-h">License</h2>
+        <p class="about-text">
+          Licensed under the <strong>PolyForm Noncommercial License 1.0.0</strong> — free to use,
+          copy, modify, and share for any noncommercial purpose. Commercial use, including monetizing
+          the project in any form, is not permitted.
         </p>
       </div>
     </section>
