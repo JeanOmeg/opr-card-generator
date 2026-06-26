@@ -535,26 +535,29 @@ function escapeRegExp(text: string): string {
   return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
-// Aura rules grant another rule only in their prose description (e.g.
-// "Reanimation Aura" reads "...get Reanimation") with no structural link in the
-// data. For each shown Aura, pull in the army rule it names so that rule's
-// description appears in the table too instead of dangling. Scoped to Auras on
-// purpose: that's effectively the only place this prose-only grant shows up, and
-// scanning every rule would drag in unrelated rules merely mentioned in passing.
-function isAura(rule: ArmySpecialRule): boolean {
-  return /\bAura\b/i.test(rule.name ?? '');
-}
-
-function expandAuraRules(
+// A granted ability often names another rule only in its prose description, with
+// no structural link in the data — e.g. "Shred when Shooting" reads "...gets
+// Shred when shooting", and "Repel Ambushers" mentions "Ambush". For each granted
+// rule on the unit, pull in the army rule it names so that rule's description
+// shows in the table instead of dangling.
+//
+// Scoped deliberately: only rules granted via an item's `content` seed the scan
+// (so a core rule like AP mentioning a stat in passing doesn't), and rating-based
+// entries (Defense, Armor, Tough...) are never pulled in — those are stat
+// modifiers mentioned inline, not keyword rules a reader needs spelled out.
+function expandGrantedRules(
   included: ArmySpecialRule[],
+  grantedIds: Set<string>,
   allRules: ArmySpecialRule[],
 ): ArmySpecialRule[] {
-  const candidates = allRules.filter((rule) => rule.name && rule.description);
+  const candidates = allRules.filter(
+    (rule) => rule.name && rule.description && rule.hasRating !== true,
+  );
   const result = [...included];
   const seenIds = new Set(included.map((rule) => rule.id));
 
-  for (const aura of included.filter(isAura)) {
-    const description = aura.description ?? '';
+  for (const source of included.filter((rule) => grantedIds.has(rule.id))) {
+    const description = source.description ?? '';
     for (const candidate of candidates) {
       if (seenIds.has(candidate.id)) continue;
       // Whole-word, case-sensitive: descriptions name other rules capitalized,
@@ -573,11 +576,24 @@ export function renderSpecialRulesTable(section: HTMLElement, army: ArmyList): v
   section.replaceChildren();
 
   const usedIds = new Set<string>();
+  // Ids reached through an item's `content` chain — the abilities granted to the
+  // unit (e.g. Repel Ambushers). Only these seed the granted-rule scan below.
+  const grantedIds = new Set<string>();
   const collect = (entries: WeaponSpecialRule[] | undefined): void => {
     if (!Array.isArray(entries)) return;
     for (const entry of entries) {
       if (entry.id) usedIds.add(entry.id);
       collect(entry.content);
+    }
+  };
+  const collectGranted = (entries: WeaponSpecialRule[] | undefined): void => {
+    if (!Array.isArray(entries)) return;
+    for (const entry of entries) {
+      if (entry.id) {
+        usedIds.add(entry.id);
+        grantedIds.add(entry.id);
+      }
+      collectGranted(entry.content);
     }
   };
 
@@ -586,11 +602,11 @@ export function renderSpecialRulesTable(section: HTMLElement, army: ArmyList): v
     for (const rule of getRules(unit)) usedIds.add(rule.id);
     for (const weapon of getWeapons(unit)) {
       collect(getWeaponSpecialRules(weapon));
-      collect(weapon.content);
+      collectGranted(weapon.content);
     }
     for (const upgrade of getUpgrades(unit)) {
       collect(getWeaponSpecialRules(upgrade));
-      collect(upgrade.content);
+      collectGranted(upgrade.content);
     }
   }
 
@@ -598,7 +614,7 @@ export function renderSpecialRulesTable(section: HTMLElement, army: ArmyList): v
   const used = armySpecialRules.filter(
     (r) => usedIds.has(r.id) || (r.aliasedRuleId != null && usedIds.has(r.aliasedRuleId)),
   );
-  const sorted = expandAuraRules(used, armySpecialRules).sort((a, b) =>
+  const sorted = expandGrantedRules(used, grantedIds, armySpecialRules).sort((a, b) =>
     a.name.localeCompare(b.name),
   );
 
