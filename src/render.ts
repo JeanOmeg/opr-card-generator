@@ -1,6 +1,14 @@
 import html2canvas from 'html2canvas';
 
+import { deleteCardImage, getCardImage, saveCardImage } from './db';
 import type { ArmySpecialRule, ArmyList, Unit, Weapon, WeaponSpecialRule } from './types';
+
+// Stable per-list identity for a unit, used to key its saved background image.
+// `selectionId` is unique per unit selection and survives "Refresh List"; falls
+// back to the army-book id if a payload ever omits it.
+export function unitImageId(unit: Unit): string {
+  return unit.selectionId || unit.id || '';
+}
 
 // --- Unit data helpers -------------------------------------------------------
 
@@ -153,7 +161,12 @@ interface CardImageState {
   tx: number;
   ty: number;
   zoomSlider?: HTMLInputElement;
+  opacitySlider?: HTMLInputElement;
 }
+
+// The largest background image we accept, to keep IndexedDB lean.
+const MAX_IMAGE_MB = 2;
+const MAX_IMAGE_BYTES = MAX_IMAGE_MB * 1024 * 1024;
 
 const cardImageStates = new WeakMap<HTMLDivElement, CardImageState>();
 
@@ -215,6 +228,7 @@ function setCardScale(card: HTMLDivElement, scale: number): void {
   clampPan(card, state);
   applyBgTransform(card);
   if (state.zoomSlider) state.zoomSlider.value = state.scale.toString();
+  scheduleCardImagePersist(card);
 }
 
 function resetCardFraming(card: HTMLDivElement): void {
@@ -226,7 +240,10 @@ function resetCardFraming(card: HTMLDivElement): void {
   if (state.zoomSlider) state.zoomSlider.value = state.scale.toString();
 }
 
-function setCardImage(card: HTMLDivElement, src: string | null): void {
+// `resetFraming` is true for a fresh upload (start centered at 1x) and false
+// when restoring a saved image, where the caller has already applied the stored
+// zoom/pan/opacity that the load handler then renders.
+function setCardImage(card: HTMLDivElement, src: string | null, resetFraming = true): void {
   let img = card.querySelector<HTMLImageElement>('.card-bg');
 
   if (!src) {
@@ -256,7 +273,78 @@ function setCardImage(card: HTMLDivElement, src: string | null): void {
   img.src = src;
   card.classList.add('card--has-image');
   card.title = 'Drag to move · scroll to zoom · ✕ to remove';
-  resetCardFraming(card);
+  if (resetFraming) resetCardFraming(card);
+}
+
+// --- Card image persistence (Localbase) --------------------------------------
+
+function getCardOpacity(card: HTMLDivElement): number {
+  const raw = card.style.getPropertyValue('--card-bg-opacity').trim();
+  const value = raw ? parseFloat(raw) : DEFAULT_BG_OPACITY;
+  return Number.isFinite(value) ? value : DEFAULT_BG_OPACITY;
+}
+
+// Write the card's current image + framing to storage, or delete the record if
+// the card no longer has an image.
+function persistCardImage(card: HTMLDivElement): void {
+  const { armyId, unitId } = card.dataset;
+  if (!armyId || !unitId) return;
+
+  const img = card.querySelector<HTMLImageElement>('.card-bg');
+  if (!img || !card.classList.contains('card--has-image')) {
+    void deleteCardImage(armyId, unitId).catch((error) => console.error(error));
+    return;
+  }
+
+  const state = getCardImageState(card);
+  void saveCardImage({
+    armyId,
+    unitId,
+    src: img.src,
+    scale: state.scale,
+    tx: state.tx,
+    ty: state.ty,
+    opacity: getCardOpacity(card),
+  }).catch((error) => console.error(error));
+}
+
+// Coalesce the rapid-fire changes of dragging / zoom & opacity sliders into one
+// write shortly after the user stops.
+const persistTimers = new WeakMap<HTMLDivElement, number>();
+function scheduleCardImagePersist(card: HTMLDivElement): void {
+  const pending = persistTimers.get(card);
+  if (pending) window.clearTimeout(pending);
+  persistTimers.set(card, window.setTimeout(() => persistCardImage(card), 300));
+}
+
+function removeCardImage(card: HTMLDivElement): void {
+  setCardImage(card, null);
+  const { armyId, unitId } = card.dataset;
+  if (armyId && unitId) void deleteCardImage(armyId, unitId).catch((error) => console.error(error));
+}
+
+// Load a unit's saved image (if any) and apply its stored framing without
+// resetting it. Safe to call on a card that has no saved image.
+async function restoreCardImage(card: HTMLDivElement, armyId: string, unitId: string): Promise<void> {
+  let record;
+  try {
+    record = await getCardImage(armyId, unitId);
+  } catch (error) {
+    console.error('Failed to load card image:', error);
+    return;
+  }
+  if (!record) return;
+
+  const state = getCardImageState(card);
+  state.scale = record.scale;
+  state.tx = record.tx;
+  state.ty = record.ty;
+
+  card.style.setProperty('--card-bg-opacity', record.opacity.toString());
+  if (state.opacitySlider) state.opacitySlider.value = record.opacity.toString();
+  if (state.zoomSlider) state.zoomSlider.value = record.scale.toString();
+
+  setCardImage(card, record.src, false);
 }
 
 function enableCardImagePanZoom(card: HTMLDivElement): void {
@@ -298,6 +386,7 @@ function enableCardImagePanZoom(card: HTMLDivElement): void {
     if (card.hasPointerCapture(event.pointerId)) {
       card.releasePointerCapture(event.pointerId);
     }
+    scheduleCardImagePersist(card);
   };
   card.addEventListener('pointerup', endDrag);
   card.addEventListener('pointercancel', endDrag);
@@ -326,7 +415,7 @@ function enableCardImageUpload(card: HTMLDivElement): void {
   removeButton.title = 'Remove image';
   removeButton.addEventListener('click', (event) => {
     event.stopPropagation();
-    setCardImage(card, null);
+    removeCardImage(card);
   });
   card.appendChild(removeButton);
 
@@ -342,8 +431,16 @@ function enableCardImageUpload(card: HTMLDivElement): void {
       const file = input.files?.[0];
       if (!file) return;
 
+      if (file.size > MAX_IMAGE_BYTES) {
+        window.alert(`That image is too large. Please choose one under ${MAX_IMAGE_MB} MB.`);
+        return;
+      }
+
       const reader = new FileReader();
-      reader.onload = () => setCardImage(card, reader.result as string);
+      reader.onload = () => {
+        setCardImage(card, reader.result as string);
+        persistCardImage(card);
+      };
       reader.readAsDataURL(file);
     });
     input.click();
@@ -456,8 +553,12 @@ function wrapCardWithToolbar(card: HTMLDivElement): HTMLDivElement {
   const opacity = createSliderRow(
     'Opacity',
     { min: '0', max: '1', step: '0.05', value: DEFAULT_BG_OPACITY.toString() },
-    (value) => card.style.setProperty('--card-bg-opacity', value),
+    (value) => {
+      card.style.setProperty('--card-bg-opacity', value);
+      scheduleCardImagePersist(card);
+    },
   );
+  getCardImageState(card).opacitySlider = opacity.slider;
 
   const zoom = createSliderRow(
     'Zoom',
@@ -476,7 +577,10 @@ function wrapCardWithToolbar(card: HTMLDivElement): HTMLDivElement {
   reset.className = 'toolbar-reset';
   reset.textContent = 'Recenter';
   reset.title = 'Reset zoom and position';
-  reset.addEventListener('click', () => resetCardFraming(card));
+  reset.addEventListener('click', () => {
+    resetCardFraming(card);
+    scheduleCardImagePersist(card);
+  });
 
   const imageControls = document.createElement('div');
   imageControls.className = 'card-toolbar-image-controls';
@@ -551,9 +655,15 @@ function combineUnits(units: Unit[]): UnitGroup[] {
   return order.map((signature) => groups.get(signature) as UnitGroup);
 }
 
-function createCard(unit: Unit, count = 1): HTMLDivElement {
+function createCard(unit: Unit, count = 1, armyId = ''): HTMLDivElement {
   const card = document.createElement('div');
   card.className = 'card';
+
+  // Identify the card for image persistence. A combined card uses its first
+  // unit's id, so its image is the one shown; the other units keep their own
+  // stored images for when the user un-combines them.
+  card.dataset.armyId = armyId;
+  card.dataset.unitId = unitImageId(unit);
 
   const baseName = unit.name || 'Unnamed unit';
   const displayName = count > 1 ? `${count}x ${baseName}` : baseName;
@@ -622,13 +732,18 @@ export function renderCards(
 ): number {
   container.replaceChildren();
 
+  const armyId = army.id || '';
   const units = Array.isArray(army.units) ? army.units : [];
   const groups = combineSimilar
     ? combineUnits(units)
     : units.map((unit) => ({ unit, count: 1 }));
 
   for (const group of groups) {
-    container.appendChild(wrapCardWithToolbar(createCard(group.unit, group.count)));
+    const card = createCard(group.unit, group.count, armyId);
+    container.appendChild(wrapCardWithToolbar(card));
+    // Restore after wrapping so the toolbar's sliders exist to reflect the
+    // stored zoom / opacity.
+    void restoreCardImage(card, armyId, unitImageId(group.unit));
   }
 
   return units.length;

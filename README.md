@@ -15,8 +15,10 @@ download as PNGs.
 ## Features
 
 - One printable card per unit: Quality / Defense / Tough, special rules, weapons, notes.
+- **Weapons** show quantities and merge identical profiles into one line (e.g. `3x Dagger (A2)`).
+- **Combine similar units** (on by default) — identical single-model units collapse into one card prefixed with their count (e.g. `3x Tribe Spider Rig`); toggle off to show each separately.
 - Combined **special-rules table** (including core/common rule descriptions) and a **spells table** for casters.
-- Per-card **background image** with drag-to-move, scroll/slider zoom, opacity and recenter.
+- Per-card **background image** (up to 2 MB) with drag-to-move, scroll/slider zoom, opacity and recenter — saved on your device per unit and kept across refreshes (cleaned up when a unit or list is removed).
 - **Print** layout (choose cards / rules / spells) and **PNG** download (single or all).
 - **My Lists** — every generated list is saved locally (IndexedDB via Localbase) so you can
   reload it instantly, refresh it on demand, or delete it.
@@ -32,9 +34,9 @@ index.ts                Front-end bootstrap + Home controller
 src/
   types.ts              Army Forge payload types
   api.ts                Data fetching
-  render.ts             Card / table rendering + image pan-zoom + PNG export
-  router.ts             Hash router + drawer (#/, #/lists, #/faq)
-  db.ts                 Localbase wrapper (save / get / delete saved lists)
+  render.ts             Card / table rendering + image pan-zoom & persistence + PNG export
+  router.ts             Hash router + drawer (#/, #/lists, #/faq, #/changelog, #/about)
+  db.ts                 Localbase wrapper (saved lists + per-unit card images)
   views/lists.ts        "My Lists" view (Load / Refresh / Delete)
 style.css               All styles
 docs/                   Production build output (served by GitHub Pages)

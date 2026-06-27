@@ -2,6 +2,7 @@
   {
     "date": "June 27, 2026",
     "items": [
+      "Card **background images now stick around**: the image you add — plus its zoom, position and opacity — is saved on your device per unit, so it's still there when you reload or come back later. On **Refresh List** it stays as long as the unit is still in the list, and is cleaned up automatically once the unit (or the whole list) is removed. Background images are limited to 2 MB each.",
       "Added a **Combine similar units** option (on by default): identical single-model units now collapse into a single card prefixed with their count (e.g. **3x Tribe Spider Rig**), matching Army Forge. Multi-model units always stay on their own card, and unchecking the option shows every unit separately.",
       "Identical weapons carried by several models are now merged into a single line with a combined quantity (e.g. three daggers show as **3x Dagger (A2)**), matching how Army Forge groups them, instead of repeating the same weapon once per model.",
       "Fixed weapons whose quantity was already part of the name (e.g. **Tribe Champion**'s **2x Hand Weapon**) showing the multiplier twice, as in **2x 2x Hand Weapon (A2)**. The quantity now appears only once."

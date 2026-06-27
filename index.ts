@@ -1,10 +1,18 @@
 import { extractArmyId, fetchArmy } from './src/api';
-import { deleteList, getList, getLists, saveList, type SavedList } from './src/db';
+import {
+  deleteList,
+  getList,
+  getLists,
+  pruneCardImages,
+  saveList,
+  type SavedList,
+} from './src/db';
 import {
   downloadAllCards,
   renderCards,
   renderSpecialRulesTable,
   renderSpellsTable,
+  unitImageId,
 } from './src/render';
 import { initRouter, onRouteEnter } from './src/router';
 import type { ArmyList } from './src/types';
@@ -144,6 +152,18 @@ async function loadArmy(): Promise<void> {
   await fetchAndShow(armyId, input);
 }
 
+// After a refresh, drop saved card images for units no longer in the list.
+// Units still present (even when combined into another card) are kept.
+async function pruneRemovedUnitImages(army: ArmyList): Promise<void> {
+  if (!army.id) return;
+  const keep = new Set((Array.isArray(army.units) ? army.units : []).map(unitImageId));
+  try {
+    await pruneCardImages(army.id, keep);
+  } catch (error) {
+    console.error('Failed to prune card images:', error);
+  }
+}
+
 /** Re-fetch the army on screen from the relay and refresh the cached copy. */
 async function refreshArmy(): Promise<void> {
   if (!currentArmyId) return;
@@ -154,6 +174,7 @@ async function refreshArmy(): Promise<void> {
 
   try {
     const army = await fetchArmy(id);
+    await pruneRemovedUnitImages(army);
     displayArmy(army, input);
     try {
       await saveList(army, input);
@@ -215,6 +236,7 @@ const listsCallbacks: ListsViewCallbacks = {
   onRefresh: async (saved: SavedList) => {
     try {
       const army = await fetchArmy(saved.id);
+      await pruneRemovedUnitImages(army);
       await saveList(army, saved.input);
     } catch (error) {
       console.error('Failed to refresh list:', error);
