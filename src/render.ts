@@ -76,9 +76,39 @@ function createStat(label: string, value: string): HTMLDivElement {
   return stat;
 }
 
-function createWeaponElement(weapon: Weapon): HTMLDivElement {
-  const count = typeof weapon.count === 'number' ? weapon.count : 0;
-  const label = count > 0 ? `${count}x ${weapon.label}` : weapon.label;
+interface MergedWeapon {
+  label: string;
+  count: number;
+}
+
+// Army Forge collapses identical weapon profiles into one line with a summed
+// quantity — three models each carrying a Dagger show as "3x Dagger", not three
+// "1x Dagger" lines. We mirror that: group the loadout by profile (the label,
+// which already encodes name + range + attacks + special rules) and add up the
+// counts. The leading "Nx " is stripped first, both so it becomes the grouping
+// key and because Army Forge sometimes bakes the multiplier into the label of a
+// count>1 weapon, which would otherwise render as "2x 2x Hand Weapon".
+function mergeWeapons(weapons: Weapon[]): MergedWeapon[] {
+  const order: string[] = [];
+  const byLabel = new Map<string, MergedWeapon>();
+
+  for (const weapon of weapons) {
+    const label = weapon.label.replace(/^\s*\d+x\s+/, '');
+    const count = typeof weapon.count === 'number' ? weapon.count : 0;
+    const existing = byLabel.get(label);
+    if (existing) {
+      existing.count += count;
+    } else {
+      byLabel.set(label, { label, count });
+      order.push(label);
+    }
+  }
+
+  return order.map((label) => byLabel.get(label) as MergedWeapon);
+}
+
+function createWeaponElement(weapon: MergedWeapon): HTMLDivElement {
+  const label = weapon.count > 0 ? `${weapon.count}x ${weapon.label}` : weapon.label;
   return createTextElement('weapon-chip', label);
 }
 
@@ -463,10 +493,71 @@ function wrapCardWithToolbar(card: HTMLDivElement): HTMLDivElement {
 
 // --- Cards & tables ----------------------------------------------------------
 
-function createCard(unit: Unit): HTMLDivElement {
+// Signature of everything a card shows, so two selections that look identical
+// (same profile, rules and loadout) collapse into one "Combine Similar Units"
+// group. Deliberately excludes per-selection identifiers (selectionId, xp,
+// notes) so genuine duplicates match while a customised copy stays separate.
+function unitSignature(unit: Unit): string {
+  const rules = getRules(unit)
+    .map((rule) => `${rule.name}:${rule.rating ?? ''}`)
+    .sort();
+  const loadout = (Array.isArray(unit.loadout) ? unit.loadout : [])
+    .map((item) => `${item.label ?? item.name ?? ''}:${item.count ?? ''}`)
+    .sort();
+
+  return JSON.stringify({
+    name: unit.name,
+    generic: unit.genericName,
+    cost: unit.cost,
+    size: unit.size,
+    quality: unit.quality,
+    defense: unit.defense,
+    rules,
+    loadout,
+  });
+}
+
+interface UnitGroup {
+  unit: Unit;
+  count: number;
+}
+
+// Group identical units, preserving first-seen order (like Army Forge's
+// "Combine Similar Units"): three separate Spider Rigs become one group of 3.
+// Only single-model units combine — multi-model units (e.g. two squads of 3)
+// stay on their own cards even when identical.
+function combineUnits(units: Unit[]): UnitGroup[] {
+  const order: string[] = [];
+  const groups = new Map<string, UnitGroup>();
+
+  for (const unit of units) {
+    if (unit.size !== 1) {
+      const key = `__uncombined__${order.length}`;
+      groups.set(key, { unit, count: 1 });
+      order.push(key);
+      continue;
+    }
+
+    const signature = unitSignature(unit);
+    const existing = groups.get(signature);
+    if (existing) {
+      existing.count += 1;
+    } else {
+      groups.set(signature, { unit, count: 1 });
+      order.push(signature);
+    }
+  }
+
+  return order.map((signature) => groups.get(signature) as UnitGroup);
+}
+
+function createCard(unit: Unit, count = 1): HTMLDivElement {
   const card = document.createElement('div');
   card.className = 'card';
-  card.dataset.unitName = unit.name || 'Unnamed unit';
+
+  const baseName = unit.name || 'Unnamed unit';
+  const displayName = count > 1 ? `${count}x ${baseName}` : baseName;
+  card.dataset.unitName = displayName;
 
   const modelsLabel = unit.size === 1 ? '1 model' : `${unit.size} models`;
   const costParts = [`${unit.cost} pts`, modelsLabel];
@@ -475,7 +566,7 @@ function createCard(unit: Unit): HTMLDivElement {
   const header = document.createElement('div');
   header.className = 'card-header';
   header.append(
-    createTextElement('card-name', unit.name || 'Unnamed unit'),
+    createTextElement('card-name', displayName),
     createTextElement('card-subtitle', unit.genericName || ''),
     createTextElement('card-cost', costParts.join(' · ')),
   );
@@ -491,7 +582,7 @@ function createCard(unit: Unit): HTMLDivElement {
   const weaponsContainer = document.createElement('div');
   weaponsContainer.className = 'weapons-container';
 
-  const weapons = getWeapons(unit);
+  const weapons = mergeWeapons(getWeapons(unit));
   if (weapons.length === 0) {
     weaponsContainer.appendChild(createTextElement('muted', 'No weapons'));
   } else {
@@ -519,13 +610,25 @@ function createCard(unit: Unit): HTMLDivElement {
   return card;
 }
 
-/** Fill `container` with one card per unit. Returns the number of units. */
-export function renderCards(container: HTMLDivElement, army: ArmyList): number {
+/**
+ * Fill `container` with cards. With `combineSimilar` (the default), identical
+ * units collapse into a single card prefixed with their count. Returns the
+ * number of units (unchanged by combining, so callers can detect an empty list).
+ */
+export function renderCards(
+  container: HTMLDivElement,
+  army: ArmyList,
+  combineSimilar = true,
+): number {
   container.replaceChildren();
 
   const units = Array.isArray(army.units) ? army.units : [];
-  for (const unit of units) {
-    container.appendChild(wrapCardWithToolbar(createCard(unit)));
+  const groups = combineSimilar
+    ? combineUnits(units)
+    : units.map((unit) => ({ unit, count: 1 }));
+
+  for (const group of groups) {
+    container.appendChild(wrapCardWithToolbar(createCard(group.unit, group.count)));
   }
 
   return units.length;

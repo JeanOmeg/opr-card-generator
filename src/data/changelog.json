@@ -1,5 +1,13 @@
 [
   {
+    "date": "June 27, 2026",
+    "items": [
+      "Added a **Combine similar units** option (on by default): identical single-model units now collapse into a single card prefixed with their count (e.g. **3x Tribe Spider Rig**), matching Army Forge. Multi-model units always stay on their own card, and unchecking the option shows every unit separately.",
+      "Identical weapons carried by several models are now merged into a single line with a combined quantity (e.g. three daggers show as **3x Dagger (A2)**), matching how Army Forge groups them, instead of repeating the same weapon once per model.",
+      "Fixed weapons whose quantity was already part of the name (e.g. **Tribe Champion**'s **2x Hand Weapon**) showing the multiplier twice, as in **2x 2x Hand Weapon (A2)**. The quantity now appears only once."
+    ]
+  },
+  {
     "date": "June 26, 2026",
     "items": [
       "Fixed upgrades that arrived without a label (e.g. **Combat Shield**) showing up as an empty blank pill; they now display their name plus the rule they grant, e.g. **Combat Shield (Shielded)**.",

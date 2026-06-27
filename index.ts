@@ -21,6 +21,7 @@ const printOptions = document.querySelector('.print-options') as HTMLElement | n
 const includeCardsCheckbox = document.getElementById('optCards') as HTMLInputElement | null;
 const includeRulesCheckbox = document.getElementById('optRules') as HTMLInputElement | null;
 const includeSpellsCheckbox = document.getElementById('optSpells') as HTMLInputElement | null;
+const combineUnitsCheckbox = document.getElementById('optCombine') as HTMLInputElement | null;
 const specialRulesSection = document.getElementById('special-rules');
 const spellsSection = document.getElementById('spells');
 const listsView = document.getElementById('view-lists');
@@ -39,9 +40,11 @@ const inputElement = inputElementElement;
 
 const DEFAULT_DOCUMENT_TITLE = document.title;
 
-// The army currently on screen, so "Refresh List" knows what to re-fetch.
+// The army currently on screen, so "Refresh List" knows what to re-fetch and the
+// "Combine similar units" toggle can re-render without re-fetching.
 let currentArmyId: string | null = null;
 let currentInput = '';
+let currentArmy: ArmyList | null = null;
 
 function setDocumentTitle(listName?: string): void {
   const name = listName?.trim();
@@ -72,8 +75,9 @@ function setMessage(message: string, type: 'loading' | 'error' | 'empty' = 'empt
 function displayArmy(army: ArmyList, input: string): void {
   currentArmyId = army.id || null;
   currentInput = input;
+  currentArmy = army;
 
-  const unitCount = renderCards(cardsContainer, army);
+  const unitCount = renderCards(cardsContainer, army, combineUnitsCheckbox?.checked ?? true);
 
   if (unitCount === 0) {
     setMessage('This army list did not return any units.', 'empty');
@@ -187,6 +191,14 @@ function bindPrintToggle(checkbox: HTMLInputElement | null, bodyClass: string): 
 bindPrintToggle(includeCardsCheckbox, 'print-hide-cards');
 bindPrintToggle(includeRulesCheckbox, 'print-hide-rules');
 bindPrintToggle(includeSpellsCheckbox, 'print-hide-spells');
+
+// Unlike the print toggles, combining changes the cards themselves, so re-render
+// the army on screen (no re-fetch needed) whenever it flips.
+combineUnitsCheckbox?.addEventListener('change', () => {
+  if (currentArmy) {
+    renderCards(cardsContainer, currentArmy, combineUnitsCheckbox.checked);
+  }
+});
 inputElement.addEventListener('keydown', (event) => {
   if (event.key === 'Enter') {
     void loadArmy();
