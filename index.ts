@@ -30,6 +30,7 @@ const includeCardsCheckbox = document.getElementById('optCards') as HTMLInputEle
 const includeRulesCheckbox = document.getElementById('optRules') as HTMLInputElement | null;
 const includeSpellsCheckbox = document.getElementById('optSpells') as HTMLInputElement | null;
 const combineUnitsCheckbox = document.getElementById('optCombine') as HTMLInputElement | null;
+const customNamesCheckbox = document.getElementById('optCustomName') as HTMLInputElement | null;
 const specialRulesSection = document.getElementById('special-rules');
 const spellsSection = document.getElementById('spells');
 const listsView = document.getElementById('view-lists');
@@ -85,7 +86,12 @@ function displayArmy(army: ArmyList, input: string): void {
   currentInput = input;
   currentArmy = army;
 
-  const unitCount = renderCards(cardsContainer, army, combineUnitsCheckbox?.checked ?? true);
+  const unitCount = renderCards(
+    cardsContainer,
+    army,
+    combineUnitsCheckbox?.checked ?? true,
+    customNamesCheckbox?.checked ?? false,
+  );
 
   if (unitCount === 0) {
     setMessage('This army list did not return any units.', 'empty');
@@ -213,13 +219,20 @@ bindPrintToggle(includeCardsCheckbox, 'print-hide-cards');
 bindPrintToggle(includeRulesCheckbox, 'print-hide-rules');
 bindPrintToggle(includeSpellsCheckbox, 'print-hide-spells');
 
-// Unlike the print toggles, combining changes the cards themselves, so re-render
-// the army on screen (no re-fetch needed) whenever it flips.
-combineUnitsCheckbox?.addEventListener('change', () => {
+// Unlike the print toggles, these change the cards themselves, so re-render the
+// army on screen (no re-fetch needed) whenever either flips.
+const reRenderCards = (): void => {
   if (currentArmy) {
-    renderCards(cardsContainer, currentArmy, combineUnitsCheckbox.checked);
+    renderCards(
+      cardsContainer,
+      currentArmy,
+      combineUnitsCheckbox?.checked ?? true,
+      customNamesCheckbox?.checked ?? false,
+    );
   }
-});
+};
+combineUnitsCheckbox?.addEventListener('change', reRenderCards);
+customNamesCheckbox?.addEventListener('change', reRenderCards);
 inputElement.addEventListener('keydown', (event) => {
   if (event.key === 'Enter') {
     void loadArmy();

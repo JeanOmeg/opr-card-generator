@@ -601,7 +601,10 @@ function wrapCardWithToolbar(card: HTMLDivElement): HTMLDivElement {
 // (same profile, rules and loadout) collapse into one "Combine Similar Units"
 // group. Deliberately excludes per-selection identifiers (selectionId, xp,
 // notes) so genuine duplicates match while a customised copy stays separate.
-function unitSignature(unit: Unit): string {
+// The custom name only joins the signature when it's actually shown, so that
+// renamed units stay on their own card then but merge with their twins when
+// custom names are hidden.
+function unitSignature(unit: Unit, useCustomNames: boolean): string {
   const rules = getRules(unit)
     .map((rule) => `${rule.name}:${rule.rating ?? ''}`)
     .sort();
@@ -611,6 +614,7 @@ function unitSignature(unit: Unit): string {
 
   return JSON.stringify({
     name: unit.name,
+    custom: useCustomNames ? unit.customName ?? '' : '',
     generic: unit.genericName,
     cost: unit.cost,
     size: unit.size,
@@ -630,7 +634,7 @@ interface UnitGroup {
 // "Combine Similar Units"): three separate Spider Rigs become one group of 3.
 // Only single-model units combine — multi-model units (e.g. two squads of 3)
 // stay on their own cards even when identical.
-function combineUnits(units: Unit[]): UnitGroup[] {
+function combineUnits(units: Unit[], useCustomNames: boolean): UnitGroup[] {
   const order: string[] = [];
   const groups = new Map<string, UnitGroup>();
 
@@ -642,7 +646,7 @@ function combineUnits(units: Unit[]): UnitGroup[] {
       continue;
     }
 
-    const signature = unitSignature(unit);
+    const signature = unitSignature(unit, useCustomNames);
     const existing = groups.get(signature);
     if (existing) {
       existing.count += 1;
@@ -655,7 +659,7 @@ function combineUnits(units: Unit[]): UnitGroup[] {
   return order.map((signature) => groups.get(signature) as UnitGroup);
 }
 
-function createCard(unit: Unit, count = 1, armyId = ''): HTMLDivElement {
+function createCard(unit: Unit, count = 1, armyId = '', useCustomNames = false): HTMLDivElement {
   const card = document.createElement('div');
   card.className = 'card';
 
@@ -665,7 +669,13 @@ function createCard(unit: Unit, count = 1, armyId = ''): HTMLDivElement {
   card.dataset.armyId = armyId;
   card.dataset.unitId = unitImageId(unit);
 
-  const baseName = unit.name || 'Unnamed unit';
+  // Army Forge keeps a renamed unit's edited title in `customName`, leaving the
+  // book name in `name`. When custom names are enabled, show the custom title
+  // and drop `name` to the subtitle (as Army Forge does); otherwise show the
+  // book name over the generic name.
+  const customName = useCustomNames ? unit.customName?.trim() : '';
+  const baseName = customName || unit.name || 'Unnamed unit';
+  const subtitle = customName ? unit.name : unit.genericName;
   const displayName = count > 1 ? `${count}x ${baseName}` : baseName;
   card.dataset.unitName = displayName;
 
@@ -677,7 +687,7 @@ function createCard(unit: Unit, count = 1, armyId = ''): HTMLDivElement {
   header.className = 'card-header';
   header.append(
     createTextElement('card-name', displayName),
-    createTextElement('card-subtitle', unit.genericName || ''),
+    createTextElement('card-subtitle', subtitle || ''),
     createTextElement('card-cost', costParts.join(' · ')),
   );
 
@@ -722,24 +732,27 @@ function createCard(unit: Unit, count = 1, armyId = ''): HTMLDivElement {
 
 /**
  * Fill `container` with cards. With `combineSimilar` (the default), identical
- * units collapse into a single card prefixed with their count. Returns the
- * number of units (unchanged by combining, so callers can detect an empty list).
+ * units collapse into a single card prefixed with their count. With
+ * `useCustomNames`, a renamed unit shows its Army Forge custom name as the title.
+ * Returns the number of units (unchanged by combining, so callers can detect an
+ * empty list).
  */
 export function renderCards(
   container: HTMLDivElement,
   army: ArmyList,
   combineSimilar = true,
+  useCustomNames = false,
 ): number {
   container.replaceChildren();
 
   const armyId = army.id || '';
   const units = Array.isArray(army.units) ? army.units : [];
   const groups = combineSimilar
-    ? combineUnits(units)
+    ? combineUnits(units, useCustomNames)
     : units.map((unit) => ({ unit, count: 1 }));
 
   for (const group of groups) {
-    const card = createCard(group.unit, group.count, armyId);
+    const card = createCard(group.unit, group.count, armyId, useCustomNames);
     container.appendChild(wrapCardWithToolbar(card));
     // Restore after wrapping so the toolbar's sliders exist to reflect the
     // stored zoom / opacity.

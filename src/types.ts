@@ -41,6 +41,9 @@ export interface Unit {
   id: string;
   cost: number;
   name: string;
+  // The user-edited name from Army Forge, when the unit has been renamed.
+  // Absent on units left at their default name.
+  customName?: string;
   size: number;
   bases?: Bases;
   items: unknown[];

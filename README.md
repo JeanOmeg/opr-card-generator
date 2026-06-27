@@ -17,6 +17,7 @@ download as PNGs.
 - One printable card per unit: Quality / Defense / Tough, special rules, weapons, notes.
 - **Weapons** show quantities and merge identical profiles into one line (e.g. `3x Dagger (A2)`).
 - **Combine similar units** (on by default) — identical single-model units collapse into one card prefixed with their count (e.g. `3x Tribe Spider Rig`); toggle off to show each separately.
+- **Use custom unit names** (off by default) — show a unit's custom Army Forge name (e.g. `Frodo`) as the card title, with the book name as the subtitle; toggle off to keep the default unit name.
 - Combined **special-rules table** (including core/common rule descriptions) and a **spells table** for casters.
 - Per-card **background image** (up to 2 MB) with drag-to-move, scroll/slider zoom, opacity and recenter — saved on your device per unit and kept across refreshes (cleaned up when a unit or list is removed).
 - **Print** layout (choose cards / rules / spells) and **PNG** download (single or all).
