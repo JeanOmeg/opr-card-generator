@@ -32,6 +32,27 @@ export interface UnitRule {
   rating?: number;
 }
 
+// What an upgrade option grants. A gain can be a weapon or item (which Army Forge
+// folds into the unit's `loadout`) or a bare rule (which it does not).
+export interface UpgradeGain {
+  id?: string;
+  name?: string;
+  type?: string;
+  label?: string;
+  count?: number;
+}
+
+export interface SelectedUpgrade {
+  upgrade?: {
+    model?: boolean;
+    affects?: { type?: string; value?: number };
+  };
+  option?: {
+    label?: string;
+    gains?: UpgradeGain[];
+  };
+}
+
 export interface Bases {
   round: string;
   square: string;
@@ -66,7 +87,7 @@ export interface Unit {
   combined: boolean;
   joinToUnit: string | null;
   selectionId: string;
-  selectedUpgrades: unknown[];
+  selectedUpgrades: SelectedUpgrade[];
   loadout: Weapon[];
 }
 

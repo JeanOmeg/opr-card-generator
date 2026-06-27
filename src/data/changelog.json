@@ -2,6 +2,7 @@
   {
     "date": "June 27, 2026",
     "items": [
+      "Fixed model upgrades that grant a rule (e.g. upgrading one model to a **Sergeant**) not showing on the card; they now appear under **Special Rules** as **1x Sergeant** and their description is listed in the special-rules table, matching Army Forge.",
       "Fixed **My Lists** showing up empty after you loaded, generated or refreshed a list — your saved lists now appear right away when you open the page, without needing to reload (F5) first.",
       "Added a **Use custom unit names** option (off by default): turn it on to show a unit's custom name from Army Forge (e.g. **Frodo**) as the card title, with the book name moving to the subtitle. Left off, cards keep showing the default unit name.",
       "Card **background images now stick around**: the image you add — plus its zoom, position and opacity — is saved on your device per unit, so it's still there when you reload or come back later. On **Refresh List** it stays as long as the unit is still in the list, and is cleaned up automatically once the unit (or the whole list) is removed. Background images are limited to 2 MB each.",

@@ -1,7 +1,14 @@
 import html2canvas from 'html2canvas';
 
 import { deleteCardImage, getCardImage, saveCardImage } from './db';
-import type { ArmySpecialRule, ArmyList, Unit, Weapon, WeaponSpecialRule } from './types';
+import type {
+  ArmySpecialRule,
+  ArmyList,
+  Unit,
+  UpgradeGain,
+  Weapon,
+  WeaponSpecialRule,
+} from './types';
 
 // Stable per-list identity for a unit, used to key its saved background image.
 // `selectionId` is unique per unit selection and survives "Refresh List"; falls
@@ -53,6 +60,40 @@ function getUpgradeLabel(upgrade: Weapon): string {
     .filter(Boolean);
 
   return granted.length > 0 ? `${name} (${granted.join(', ')})` : name;
+}
+
+// Some upgrades grant a special rule to a subset of a unit's models rather than
+// a weapon or item — e.g. upgrading one model to a "Sergeant". Army Forge folds
+// weapon/item upgrades into `loadout`, but a rule-only upgrade lands nowhere the
+// card otherwise reads: it isn't in `loadout` and (being model-specific) isn't
+// merged into `rules` either. So we read it straight from `selectedUpgrades`.
+// Army Forge shows these as "1x Sergeant" — the count being how many models gain
+// the rule — so we keep the count prefix even when it's 1.
+function getUpgradeRuleGains(unit: Unit): { gain: UpgradeGain; count: number }[] {
+  const selected = Array.isArray(unit.selectedUpgrades) ? unit.selectedUpgrades : [];
+  const existing = new Set(getRules(unit).map((rule) => rule.name));
+  const result: { gain: UpgradeGain; count: number }[] = [];
+
+  for (const selection of selected) {
+    const gains = Array.isArray(selection.option?.gains) ? selection.option.gains : [];
+    const count = selection.upgrade?.affects?.value ?? 1;
+    for (const gain of gains) {
+      if (gain.type !== 'ArmyBookRule') continue;
+      const label = gain.label?.trim() || gain.name?.trim() || '';
+      if (!label || existing.has(gain.name ?? label)) continue;
+      result.push({ gain, count });
+    }
+  }
+
+  return result;
+}
+
+// Army Forge shows these as "1x Sergeant" — the count being how many models gain
+// the rule — so we keep the count prefix even when it's 1.
+function getUpgradeRulePills(unit: Unit): string[] {
+  return getUpgradeRuleGains(unit).map(
+    ({ gain, count }) => `${count}x ${(gain.label?.trim() || gain.name?.trim()) ?? ''}`,
+  );
 }
 
 function getTough(unit: Unit): string {
@@ -126,8 +167,9 @@ function createRulesContainer(unit: Unit): HTMLDivElement {
 
   const rules = getRules(unit).filter((rule) => rule.name !== 'Tough');
   const upgrades = getUpgrades(unit);
+  const upgradeRulePills = getUpgradeRulePills(unit);
 
-  if (rules.length === 0 && upgrades.length === 0) {
+  if (rules.length === 0 && upgrades.length === 0 && upgradeRulePills.length === 0) {
     container.appendChild(createTextElement('muted', 'No special rules'));
     return container;
   }
@@ -144,6 +186,7 @@ function createRulesContainer(unit: Unit): HTMLDivElement {
 
   for (const rule of rules) addPill(rule.label || rule.name);
   for (const upgrade of upgrades) addPill(getUpgradeLabel(upgrade));
+  for (const pill of upgradeRulePills) addPill(pill);
 
   return container;
 }
@@ -838,6 +881,15 @@ export function renderSpecialRulesTable(section: HTMLElement, army: ArmyList): v
     for (const upgrade of getUpgrades(unit)) {
       collect(getWeaponSpecialRules(upgrade));
       collectGranted(upgrade.content);
+    }
+    // Rule-only model upgrades (e.g. Sergeant) live in `selectedUpgrades`, not in
+    // loadout, so collect their rule ids here too. Treat them as granted so the
+    // expand scan can pull in any rule their description names.
+    for (const { gain } of getUpgradeRuleGains(unit)) {
+      if (gain.id) {
+        usedIds.add(gain.id);
+        grantedIds.add(gain.id);
+      }
     }
   }
 
