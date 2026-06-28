@@ -137,13 +137,16 @@ interface MergedWeapon {
 // counts. The leading "Nx " is stripped first, both so it becomes the grouping
 // key and because Army Forge sometimes bakes the multiplier into the label of a
 // count>1 weapon, which would otherwise render as "2x 2x Hand Weapon".
-function mergeWeapons(weapons: Weapon[]): MergedWeapon[] {
+// `multiplier` scales every weapon count by the number of identical units a
+// combined card represents, so a card for 3 merged archers shows "3x Bow"
+// rather than the single unit's "1x Bow".
+function mergeWeapons(weapons: Weapon[], multiplier = 1): MergedWeapon[] {
   const order: string[] = [];
   const byLabel = new Map<string, MergedWeapon>();
 
   for (const weapon of weapons) {
     const label = weapon.label.replace(/^\s*\d+x\s+/, '');
-    const count = typeof weapon.count === 'number' ? weapon.count : 0;
+    const count = (typeof weapon.count === 'number' ? weapon.count : 0) * multiplier;
     const existing = byLabel.get(label);
     if (existing) {
       existing.count += count;
@@ -722,8 +725,13 @@ function createCard(unit: Unit, count = 1, armyId = '', useCustomNames = false):
   const displayName = count > 1 ? `${count}x ${baseName}` : baseName;
   card.dataset.unitName = displayName;
 
-  const modelsLabel = unit.size === 1 ? '1 model' : `${unit.size} models`;
-  const costParts = [`${unit.cost} pts`, modelsLabel];
+  // A combined card stands in for `count` identical units, so its points and
+  // model tally are the per-unit values multiplied by how many were merged
+  // (only single-model units combine, so `size` is 1 for every combined card).
+  const totalModels = unit.size * count;
+  const totalCost = unit.cost * count;
+  const modelsLabel = totalModels === 1 ? '1 model' : `${totalModels} models`;
+  const costParts = [`${totalCost} pts`, modelsLabel];
   if (unit.xp > 0) costParts.push(`XP ${unit.xp}`);
 
   const header = document.createElement('div');
@@ -745,7 +753,7 @@ function createCard(unit: Unit, count = 1, armyId = '', useCustomNames = false):
   const weaponsContainer = document.createElement('div');
   weaponsContainer.className = 'weapons-container';
 
-  const weapons = mergeWeapons(getWeapons(unit));
+  const weapons = mergeWeapons(getWeapons(unit), count);
   if (weapons.length === 0) {
     weaponsContainer.appendChild(createTextElement('muted', 'No weapons'));
   } else {
