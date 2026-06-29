@@ -1,5 +1,12 @@
 [
   {
+    "date": "June 29, 2026",
+    "items": [
+      "Added **Horizontal** and **Vertical** sliders to each card's image controls, so you can reposition a background image with the sliders instead of only dragging it — much easier on phones and tablets.",
+      "Your per-list options (**Combine similar units**, **Use custom unit names**, and the print include toggles) are now **saved with each list** and restored when you load it from **My Lists**, instead of resetting every time."
+    ]
+  },
+  {
     "date": "June 27, 2026",
     "items": [
       "Fixed **combined unit cards** showing only one unit's points, model count and weapon quantities: a card for several merged units (e.g. **3x Mercenary Hunter**) now totals them correctly — e.g. **45 pts · 3 models** with **3x Bow** — instead of **15 pts · 1 model**.",

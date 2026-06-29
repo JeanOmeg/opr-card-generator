@@ -208,6 +208,8 @@ interface CardImageState {
   ty: number;
   zoomSlider?: HTMLInputElement;
   opacitySlider?: HTMLInputElement;
+  panXSlider?: HTMLInputElement;
+  panYSlider?: HTMLInputElement;
 }
 
 // The largest background image we accept, to keep IndexedDB lean.
@@ -266,6 +268,37 @@ function applyBgTransform(card: HTMLDivElement): void {
   card.style.setProperty('--card-bg-ty', `${state.ty}px`);
   const { maxX, maxY } = getPanBounds(card);
   card.classList.toggle('card--pannable', maxX > 0 || maxY > 0);
+  syncPanSliders(card, maxX, maxY);
+}
+
+// The pan sliders show position as a percentage of the available travel, so the
+// px offset stays the source of truth (shared with drag) while the slider just
+// reflects it. With no room to pan (maxX/maxY 0) they sit centered at 0.
+function syncPanSliders(card: HTMLDivElement, maxX: number, maxY: number): void {
+  const state = getCardImageState(card);
+  if (state.panXSlider) {
+    state.panXSlider.value = maxX > 0 ? ((state.tx / maxX) * 100).toString() : '0';
+  }
+  if (state.panYSlider) {
+    state.panYSlider.value = maxY > 0 ? ((state.ty / maxY) * 100).toString() : '0';
+  }
+}
+
+// Move the image along one axis from a slider value (-100..100), mapping that
+// percentage onto the current pan range. Recomputed live because the range
+// shrinks/grows with zoom.
+function setCardPan(card: HTMLDivElement, axis: 'x' | 'y', percent: number): void {
+  const state = getCardImageState(card);
+  const { maxX, maxY } = getPanBounds(card);
+  const fraction = percent / 100;
+  if (axis === 'x') {
+    state.tx = fraction * maxX;
+  } else {
+    state.ty = fraction * maxY;
+  }
+  clampPan(card, state);
+  applyBgTransform(card);
+  scheduleCardImagePersist(card);
 }
 
 function setCardScale(card: HTMLDivElement, scale: number): void {
@@ -618,6 +651,22 @@ function wrapCardWithToolbar(card: HTMLDivElement): HTMLDivElement {
   );
   getCardImageState(card).zoomSlider = zoom.slider;
 
+  // Horizontal / vertical position sliders — an alternative to dragging the
+  // image, which is awkward on touch screens.
+  const panX = createSliderRow(
+    'Horizontal',
+    { min: '-100', max: '100', step: '1', value: '0' },
+    (value) => setCardPan(card, 'x', parseFloat(value)),
+  );
+  getCardImageState(card).panXSlider = panX.slider;
+
+  const panY = createSliderRow(
+    'Vertical',
+    { min: '-100', max: '100', step: '1', value: '0' },
+    (value) => setCardPan(card, 'y', parseFloat(value)),
+  );
+  getCardImageState(card).panYSlider = panY.slider;
+
   const reset = document.createElement('button');
   reset.type = 'button';
   reset.className = 'toolbar-reset';
@@ -630,7 +679,7 @@ function wrapCardWithToolbar(card: HTMLDivElement): HTMLDivElement {
 
   const imageControls = document.createElement('div');
   imageControls.className = 'card-toolbar-image-controls';
-  imageControls.append(opacity.row, zoom.row, reset);
+  imageControls.append(opacity.row, zoom.row, panX.row, panY.row, reset);
 
   const actions = document.createElement('div');
   actions.className = 'card-toolbar-actions';

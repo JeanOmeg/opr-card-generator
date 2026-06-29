@@ -2,8 +2,20 @@ import Localbase from 'localbase';
 
 import type { ArmyList } from './types';
 
+// The per-army display/print toggles, persisted so loading a saved list restores
+// exactly how the user had it set up (e.g. "Combine similar units") rather than
+// resetting to defaults every time.
+export interface ListSettings {
+  combineSimilar: boolean;
+  useCustomNames: boolean;
+  includeCards: boolean;
+  includeRules: boolean;
+  includeSpells: boolean;
+}
+
 // A saved army list: lightweight metadata for the listing plus the full relay
 // payload, which doubles as an offline cache so "Load" is instant (no network).
+// `settings` is absent on lists saved before per-army settings existed.
 export interface SavedList {
   id: string;
   name: string;
@@ -12,6 +24,7 @@ export interface SavedList {
   pointsLimit: number;
   input: string;
   payload: ArmyList;
+  settings?: ListSettings;
   savedAt: string;
   updatedAt: string;
 }
@@ -188,6 +201,8 @@ export function saveList(army: ArmyList, input: string): Promise<SavedList> {
       pointsLimit: army.pointsLimit,
       input,
       payload: army,
+      // Keep the user's saved display/print settings across refreshes.
+      settings: existing?.settings,
       savedAt: existing?.savedAt ?? now,
       updatedAt: now,
     };
@@ -199,6 +214,20 @@ export function saveList(army: ArmyList, input: string): Promise<SavedList> {
     }
 
     return record;
+  });
+}
+
+/**
+ * Persist the display/print settings for an already-saved list. No-op if the
+ * list isn't stored yet. Leaves `updatedAt` untouched so toggling an option
+ * doesn't reorder "My Lists".
+ */
+export function saveListSettings(id: string, settings: ListSettings): Promise<void> {
+  return enqueue(async () => {
+    const existing = await rawGetList(freshDb(), id);
+    if (!existing) return;
+    const record: SavedList = { ...existing, settings };
+    await freshDb().collection(COLLECTION).doc({ id }).set(record);
   });
 }
 

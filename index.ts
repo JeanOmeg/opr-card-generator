@@ -5,6 +5,8 @@ import {
   getLists,
   pruneCardImages,
   saveList,
+  saveListSettings,
+  type ListSettings,
   type SavedList,
 } from './src/db';
 import {
@@ -54,6 +56,48 @@ const DEFAULT_DOCUMENT_TITLE = document.title;
 let currentArmyId: string | null = null;
 let currentInput = '';
 let currentArmy: ArmyList | null = null;
+
+// Default toggle states, matching the `checked` attributes in index.html. Used
+// when a saved list predates per-army settings, so it loads predictably.
+const DEFAULT_SETTINGS: ListSettings = {
+  combineSimilar: true,
+  useCustomNames: false,
+  includeCards: true,
+  includeRules: true,
+  includeSpells: true,
+};
+
+function getCurrentSettings(): ListSettings {
+  return {
+    combineSimilar: combineUnitsCheckbox?.checked ?? DEFAULT_SETTINGS.combineSimilar,
+    useCustomNames: customNamesCheckbox?.checked ?? DEFAULT_SETTINGS.useCustomNames,
+    includeCards: includeCardsCheckbox?.checked ?? DEFAULT_SETTINGS.includeCards,
+    includeRules: includeRulesCheckbox?.checked ?? DEFAULT_SETTINGS.includeRules,
+    includeSpells: includeSpellsCheckbox?.checked ?? DEFAULT_SETTINGS.includeSpells,
+  };
+}
+
+// Reflect a saved list's settings (or the defaults) onto the checkboxes, then
+// sync the print body classes that derive from them. Call before displaying the
+// army so the first render already honors the restored options.
+function applySettings(settings?: ListSettings): void {
+  const resolved = settings ?? DEFAULT_SETTINGS;
+  if (combineUnitsCheckbox) combineUnitsCheckbox.checked = resolved.combineSimilar;
+  if (customNamesCheckbox) customNamesCheckbox.checked = resolved.useCustomNames;
+  if (includeCardsCheckbox) includeCardsCheckbox.checked = resolved.includeCards;
+  if (includeRulesCheckbox) includeRulesCheckbox.checked = resolved.includeRules;
+  if (includeSpellsCheckbox) includeSpellsCheckbox.checked = resolved.includeSpells;
+  applyPrintToggles();
+}
+
+// Persist the current toggle states against the army on screen, so loading it
+// again later restores them.
+function persistCurrentSettings(): void {
+  if (!currentArmyId) return;
+  void saveListSettings(currentArmyId, getCurrentSettings()).catch((error) =>
+    console.error('Failed to save list settings:', error),
+  );
+}
 
 function setDocumentTitle(listName?: string): void {
   const name = listName?.trim();
@@ -116,6 +160,9 @@ async function fetchAndShow(armyId: string, input: string): Promise<void> {
     if (army.id) {
       try {
         await saveList(army, input);
+        // Capture the toggle states this list was generated with, so reloading
+        // it later restores them rather than resetting to defaults.
+        await saveListSettings(army.id, getCurrentSettings());
       } catch (saveError) {
         console.error('Failed to save list:', saveError);
       }
@@ -148,6 +195,7 @@ async function loadArmy(): Promise<void> {
   try {
     const cached = await getList(armyId);
     if (cached) {
+      applySettings(cached.settings);
       displayArmy(cached.payload, cached.input);
       return;
     }
@@ -206,18 +254,22 @@ downloadAllButton?.addEventListener('click', () => {
   });
 });
 
-function bindPrintToggle(checkbox: HTMLInputElement | null, bodyClass: string): void {
-  if (!checkbox) return;
-  const apply = (): void => {
-    document.body.classList.toggle(bodyClass, !checkbox.checked);
-  };
-  checkbox.addEventListener('change', apply);
-  apply();
+// Sync the print-hiding body classes from the current checkbox states. Driven by
+// the checkboxes' change events and re-run whenever settings are applied
+// programmatically (which doesn't fire change).
+function applyPrintToggles(): void {
+  document.body.classList.toggle('print-hide-cards', !(includeCardsCheckbox?.checked ?? true));
+  document.body.classList.toggle('print-hide-rules', !(includeRulesCheckbox?.checked ?? true));
+  document.body.classList.toggle('print-hide-spells', !(includeSpellsCheckbox?.checked ?? true));
 }
 
-bindPrintToggle(includeCardsCheckbox, 'print-hide-cards');
-bindPrintToggle(includeRulesCheckbox, 'print-hide-rules');
-bindPrintToggle(includeSpellsCheckbox, 'print-hide-spells');
+for (const checkbox of [includeCardsCheckbox, includeRulesCheckbox, includeSpellsCheckbox]) {
+  checkbox?.addEventListener('change', () => {
+    applyPrintToggles();
+    persistCurrentSettings();
+  });
+}
+applyPrintToggles();
 
 // Unlike the print toggles, these change the cards themselves, so re-render the
 // army on screen (no re-fetch needed) whenever either flips.
@@ -231,8 +283,12 @@ const reRenderCards = (): void => {
     );
   }
 };
-combineUnitsCheckbox?.addEventListener('change', reRenderCards);
-customNamesCheckbox?.addEventListener('change', reRenderCards);
+const onCardOptionChange = (): void => {
+  reRenderCards();
+  persistCurrentSettings();
+};
+combineUnitsCheckbox?.addEventListener('change', onCardOptionChange);
+customNamesCheckbox?.addEventListener('change', onCardOptionChange);
 inputElement.addEventListener('keydown', (event) => {
   if (event.key === 'Enter') {
     void loadArmy();
@@ -243,6 +299,7 @@ const listsCallbacks: ListsViewCallbacks = {
   onLoad: (saved: SavedList) => {
     inputElement.value = saved.input;
     localStorage.setItem('lastArmyInput', saved.input);
+    applySettings(saved.settings);
     displayArmy(saved.payload, saved.input);
     window.location.hash = '#/';
   },
