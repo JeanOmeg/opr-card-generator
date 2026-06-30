@@ -6,13 +6,20 @@
 // (used by the lists view to refresh when navigated to).
 
 type RouteHandler = () => void;
+type RouteChangeHandler = (route: string) => void;
 
 const HOME_ROUTE = '/';
 const onEnterHandlers = new Map<string, RouteHandler>();
+const onChangeHandlers: RouteChangeHandler[] = [];
 
 /** Register a callback to run every time `route` becomes active. */
 export function onRouteEnter(route: string, handler: RouteHandler): void {
   onEnterHandlers.set(route, handler);
+}
+
+/** Register a callback to run on every route change, with the new route. */
+export function onRouteChange(handler: RouteChangeHandler): void {
+  onChangeHandlers.push(handler);
 }
 
 function currentRoute(): string {
@@ -42,6 +49,7 @@ function applyRoute(): void {
 
   setDrawerOpen(false);
   onEnterHandlers.get(route)?.();
+  for (const handler of onChangeHandlers) handler(route);
 }
 
 export function initRouter(): void {

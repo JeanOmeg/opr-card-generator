@@ -16,7 +16,7 @@ import {
   renderSpellsTable,
   unitImageId,
 } from './src/render';
-import { initRouter, onRouteEnter } from './src/router';
+import { initRouter, onRouteChange, onRouteEnter } from './src/router';
 import type { ArmyList } from './src/types';
 import { renderChangelog } from './src/views/changelog';
 import { renderListsView, type ListsViewCallbacks } from './src/views/lists';
@@ -37,6 +37,8 @@ const specialRulesSection = document.getElementById('special-rules');
 const spellsSection = document.getElementById('spells');
 const listsView = document.getElementById('view-lists');
 const changelogEntries = document.getElementById('changelog-entries');
+const homeHelp = document.getElementById('home-help');
+const faqView = document.getElementById('view-faq');
 
 if (!(cardsContainerElement instanceof HTMLDivElement)) {
   throw new Error('Missing #cards container.');
@@ -60,8 +62,8 @@ let currentArmy: ArmyList | null = null;
 // Default toggle states, matching the `checked` attributes in index.html. Used
 // when a saved list predates per-army settings, so it loads predictably.
 const DEFAULT_SETTINGS: ListSettings = {
-  combineSimilar: true,
-  useCustomNames: false,
+  combineSimilar: false,
+  useCustomNames: true,
   includeCards: true,
   includeRules: true,
   includeSpells: true,
@@ -109,6 +111,9 @@ function setPrintControlsVisible(visible: boolean): void {
   if (downloadAllButton) downloadAllButton.style.display = visible ? '' : 'none';
   if (refreshButton) refreshButton.style.display = visible ? '' : 'none';
   if (printOptions) printOptions.style.display = visible ? '' : 'none';
+  // The onboarding help is the inverse of the army being on screen: show it
+  // whenever no army is loaded, hide it once cards render.
+  if (homeHelp) homeHelp.hidden = visible;
 }
 
 function setMessage(message: string, type: 'loading' | 'error' | 'empty' = 'empty'): void {
@@ -330,7 +335,42 @@ onRouteEnter('/lists', () => {
   void refreshListsView();
 });
 
+// Clear the loaded army whenever the user leaves Home. Returning to Home then
+// shows the FAQ again instead of the previous army — a deliberate nudge to get
+// people reading the FAQ while they learn the system. The lists view loads an
+// army and *then* navigates to Home, so entering Home itself never resets.
+function resetHome(): void {
+  currentArmyId = null;
+  currentInput = '';
+  currentArmy = null;
+  cardsContainer.replaceChildren();
+  specialRulesSection?.replaceChildren();
+  spellsSection?.replaceChildren();
+  inputElement.value = '';
+  localStorage.removeItem('lastArmyInput');
+  applySettings(DEFAULT_SETTINGS);
+  setDocumentTitle();
+  setPrintControlsVisible(false);
+}
+
+onRouteChange((route) => {
+  if (route !== '/') resetHome();
+});
+
 if (changelogEntries) renderChangelog(changelogEntries);
+
+// Clone the FAQ (callout + Q&A) onto the Home screen so it greets users while no
+// army is loaded — the FAQ page itself stays as the canonical source, this just
+// surfaces the same content where people actually look.
+if (homeHelp && faqView) {
+  const heading = document.createElement('h2');
+  heading.className = 'home-help-title';
+  heading.textContent = 'New here? How to use OPR Card Generator';
+  homeHelp.appendChild(heading);
+  for (const node of Array.from(faqView.querySelectorAll('.faq-callout, .faq-section'))) {
+    homeHelp.appendChild(node.cloneNode(true));
+  }
+}
 
 inputElement.value = localStorage.getItem('lastArmyInput') ?? '';
 setPrintControlsVisible(false);

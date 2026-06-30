@@ -1,5 +1,18 @@
 [
   {
+    "date": "June 30, 2026",
+    "items": [
+      "Units merged with the **Combine Units** rule (two same-type units fielded as one larger unit) now render as a **single card** with their models, points and weapons added together — e.g. two 5-model squads become one **Battle Brothers [10]** card showing both squads' weapons. This always applies, regardless of the **Combine similar units** option.",
+      "Reworked **Combine similar units**: identical cards now combine regardless of how many models they have (combining is purely cosmetic, to save paper), up to **3 cards** per combined card. A combined card keeps the **original** card's points and weapon quantities instead of multiplying them.",
+      "The model count no longer shows next to the points; it now appears next to the card name as **[N]**, e.g. **3x Battle Brothers [5]**.",
+      "The **FAQ** now also appears right on the **Home** screen whenever no army is loaded, so you can read how to use the app without opening the FAQ page. The dedicated FAQ page is still there too.",
+      "The army header above the **special-rules table** now shows the **activation count** (e.g. **250 / 250 pts · 8 activations · AOFS**), making it easy to tell how many units you really have when similar cards were combined.",
+      "Leaving the **Home** screen now clears the loaded army, so coming back to Home shows the **FAQ** again instead of your previous cards — a temporary nudge to help everyone learn how to use the app.",
+      "Changed the default options: **Use custom unit names** is now **on** and **Combine similar units** is now **off** by default, and the print/option checkboxes were reordered (cards, rules, spells, custom names, combine).",
+      "Cards built from two units merged by the **Combine Units** rule now show a **Combined** badge next to the points, making it obvious when units were combined (sometimes by accident in Army Forge)."
+    ]
+  },
+  {
     "date": "June 29, 2026",
     "items": [
       "Added **Horizontal** and **Vertical** sliders to each card's image controls, so you can reposition a background image with the sliders instead of only dragging it — much easier on phones and tablets.",

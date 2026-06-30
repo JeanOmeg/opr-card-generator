@@ -89,6 +89,9 @@ export interface Unit {
   selectionId: string;
   selectedUpgrades: SelectedUpgrade[];
   loadout: Weapon[];
+  // Set by us (not Army Forge) when this unit is the result of folding two
+  // "Combine Units" halves into one card, so the card can flag itself as combined.
+  combinedFromHalves?: boolean;
 }
 
 export interface ArmySpecialRule {

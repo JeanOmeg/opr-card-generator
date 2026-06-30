@@ -5,6 +5,7 @@ import type {
   ArmySpecialRule,
   ArmyList,
   Unit,
+  UnitRule,
   UpgradeGain,
   Weapon,
   WeaponSpecialRule,
@@ -137,16 +138,15 @@ interface MergedWeapon {
 // counts. The leading "Nx " is stripped first, both so it becomes the grouping
 // key and because Army Forge sometimes bakes the multiplier into the label of a
 // count>1 weapon, which would otherwise render as "2x 2x Hand Weapon".
-// `multiplier` scales every weapon count by the number of identical units a
-// combined card represents, so a card for 3 merged archers shows "3x Bow"
-// rather than the single unit's "1x Bow".
-function mergeWeapons(weapons: Weapon[], multiplier = 1): MergedWeapon[] {
+// Combining identical units is purely cosmetic, so weapon counts stay at the
+// single-unit values — a combined card keeps the original card's loadout.
+function mergeWeapons(weapons: Weapon[]): MergedWeapon[] {
   const order: string[] = [];
   const byLabel = new Map<string, MergedWeapon>();
 
   for (const weapon of weapons) {
     const label = weapon.label.replace(/^\s*\d+x\s+/, '');
-    const count = (typeof weapon.count === 'number' ? weapon.count : 0) * multiplier;
+    const count = typeof weapon.count === 'number' ? weapon.count : 0;
     const existing = byLabel.get(label);
     if (existing) {
       existing.count += count;
@@ -725,33 +725,100 @@ interface UnitGroup {
   count: number;
 }
 
-// Group identical units, preserving first-seen order (like Army Forge's
-// "Combine Similar Units"): three separate Spider Rigs become one group of 3.
-// Only single-model units combine — multi-model units (e.g. two squads of 3)
-// stay on their own cards even when identical.
-function combineUnits(units: Unit[], useCustomNames: boolean): UnitGroup[] {
-  const order: string[] = [];
-  const groups = new Map<string, UnitGroup>();
+// OPR's "Combine Units" special rule fuses two same-type units into one larger
+// unit on the table. Army Forge marks both halves `combined: true` and points the
+// second half's `joinToUnit` at the first's `selectionId`. The /tts feed still
+// lists them as two units, each holding its own half of the models and loadout —
+// which can differ (e.g. one half carries a Missile Launcher, the other a Gravity
+// Rifle). We fold each joined half back into its host so the pair renders as a
+// single card for the real, larger unit: models, points and loadout are summed,
+// and rules from both halves are unioned. This is a genuine in-game merge, so it
+// always applies — unlike the cosmetic "combine similar units" option below.
+// (Heroes that merely join a unit have `combined: false`, so they stay separate.)
+function mergeUnitHalves(host: Unit, joined: Unit[]): Unit {
+  const all = [host, ...joined];
 
-  for (const unit of units) {
-    if (unit.size !== 1) {
-      const key = `__uncombined__${order.length}`;
-      groups.set(key, { unit, count: 1 });
-      order.push(key);
-      continue;
-    }
-
-    const signature = unitSignature(unit, useCustomNames);
-    const existing = groups.get(signature);
-    if (existing) {
-      existing.count += 1;
-    } else {
-      groups.set(signature, { unit, count: 1 });
-      order.push(signature);
+  const rules: UnitRule[] = [];
+  const seenRules = new Set<string>();
+  for (const unit of all) {
+    for (const rule of getRules(unit)) {
+      const key = `${rule.name}:${rule.rating ?? ''}`;
+      if (seenRules.has(key)) continue;
+      seenRules.add(key);
+      rules.push(rule);
     }
   }
 
-  return order.map((signature) => groups.get(signature) as UnitGroup);
+  return {
+    ...host,
+    size: all.reduce((sum, unit) => sum + (unit.size ?? 0), 0),
+    cost: all.reduce((sum, unit) => sum + (unit.cost ?? 0), 0),
+    loadout: all.flatMap((unit) => (Array.isArray(unit.loadout) ? unit.loadout : [])),
+    rules,
+    selectedUpgrades: all.flatMap((unit) =>
+      Array.isArray(unit.selectedUpgrades) ? unit.selectedUpgrades : [],
+    ),
+    combinedFromHalves: true,
+  };
+}
+
+function mergeJoinedUnits(units: Unit[]): Unit[] {
+  const bySelectionId = new Map<string, Unit>();
+  for (const unit of units) {
+    if (unit.selectionId) bySelectionId.set(unit.selectionId, unit);
+  }
+
+  // A joined half is one that's combined and points at an existing host.
+  const joinsHost = (unit: Unit): boolean =>
+    unit.combined === true && !!unit.joinToUnit && bySelectionId.has(unit.joinToUnit);
+
+  // Gather each host's joined halves, preserving their first-seen order.
+  const halvesByHost = new Map<string, Unit[]>();
+  for (const unit of units) {
+    if (!joinsHost(unit)) continue;
+    const hostId = unit.joinToUnit as string;
+    const halves = halvesByHost.get(hostId) ?? [];
+    halves.push(unit);
+    halvesByHost.set(hostId, halves);
+  }
+
+  const result: Unit[] = [];
+  for (const unit of units) {
+    if (joinsHost(unit)) continue; // folded into its host below
+    const halves = halvesByHost.get(unit.selectionId);
+    result.push(halves && halves.length > 0 ? mergeUnitHalves(unit, halves) : unit);
+  }
+  return result;
+}
+
+// The most identical units that may share a single combined card. Combining is
+// purely cosmetic (to save paper), so three is plenty to keep a card readable.
+const MAX_COMBINE = 3;
+
+// Group identical units, preserving first-seen order (like Army Forge's
+// "Combine Similar Units"): three separate Spider Rigs become one group of 3.
+// Units combine regardless of how many models they have — the card just stands
+// in for several identical units to save paper — but at most MAX_COMBINE share a
+// card, so a fourth identical unit starts a fresh group.
+function combineUnits(units: Unit[], useCustomNames: boolean): UnitGroup[] {
+  const result: UnitGroup[] = [];
+  // The current not-yet-full group for each signature, so a fourth duplicate
+  // opens a new card instead of overflowing the third.
+  const openGroup = new Map<string, UnitGroup>();
+
+  for (const unit of units) {
+    const signature = unitSignature(unit, useCustomNames);
+    const existing = openGroup.get(signature);
+    if (existing && existing.count < MAX_COMBINE) {
+      existing.count += 1;
+      continue;
+    }
+    const group: UnitGroup = { unit, count: 1 };
+    openGroup.set(signature, group);
+    result.push(group);
+  }
+
+  return result;
 }
 
 function createCard(unit: Unit, count = 1, armyId = '', useCustomNames = false): HTMLDivElement {
@@ -771,24 +838,33 @@ function createCard(unit: Unit, count = 1, armyId = '', useCustomNames = false):
   const customName = useCustomNames ? unit.customName?.trim() : '';
   const baseName = customName || unit.name || 'Unnamed unit';
   const subtitle = customName ? unit.name : unit.genericName;
-  const displayName = count > 1 ? `${count}x ${baseName}` : baseName;
+  // A combined card stands in for `count` identical units but keeps the original
+  // card's profile, points and loadout — combining is purely cosmetic (to save
+  // paper), nothing is multiplied. The model count moves from the points line to
+  // a `[size]` suffix on the name, e.g. "3x Battle Brothers [5]".
+  const prefix = count > 1 ? `${count}x ` : '';
+  const displayName = `${prefix}${baseName} [${unit.size}]`;
   card.dataset.unitName = displayName;
 
-  // A combined card stands in for `count` identical units, so its points and
-  // model tally are the per-unit values multiplied by how many were merged
-  // (only single-model units combine, so `size` is 1 for every combined card).
-  const totalModels = unit.size * count;
-  const totalCost = unit.cost * count;
-  const modelsLabel = totalModels === 1 ? '1 model' : `${totalModels} models`;
-  const costParts = [`${totalCost} pts`, modelsLabel];
+  const costParts = [`${unit.cost} pts`];
   if (unit.xp > 0) costParts.push(`XP ${unit.xp}`);
+
+  const costElement = createTextElement('card-cost', costParts.join(' · '));
+  // Flag units fused by the "Combine Units" rule so an accidental combine in Army
+  // Forge is easy to spot — the card stands in for two units merged into one.
+  if (unit.combinedFromHalves) {
+    const badge = document.createElement('span');
+    badge.className = 'combined-badge';
+    badge.textContent = 'Combined';
+    costElement.append(' ', badge);
+  }
 
   const header = document.createElement('div');
   header.className = 'card-header';
   header.append(
     createTextElement('card-name', displayName),
     createTextElement('card-subtitle', subtitle || ''),
-    createTextElement('card-cost', costParts.join(' · ')),
+    costElement,
   );
 
   const stats = document.createElement('div');
@@ -802,7 +878,7 @@ function createCard(unit: Unit, count = 1, armyId = '', useCustomNames = false):
   const weaponsContainer = document.createElement('div');
   weaponsContainer.className = 'weapons-container';
 
-  const weapons = mergeWeapons(getWeapons(unit), count);
+  const weapons = mergeWeapons(getWeapons(unit));
   if (weapons.length === 0) {
     weaponsContainer.appendChild(createTextElement('muted', 'No weapons'));
   } else {
@@ -846,7 +922,9 @@ export function renderCards(
   container.replaceChildren();
 
   const armyId = army.id || '';
-  const units = Array.isArray(army.units) ? army.units : [];
+  // Fold "Combine Units" halves into single units first — that's an in-game merge
+  // that applies whether or not the cosmetic "combine similar units" option is on.
+  const units = mergeJoinedUnits(Array.isArray(army.units) ? army.units : []);
   const groups = combineSimilar
     ? combineUnits(units, useCustomNames)
     : units.map((unit) => ({ unit, count: 1 }));
@@ -967,11 +1045,19 @@ export function renderSpecialRulesTable(section: HTMLElement, army: ArmyList): v
   const armyCell = document.createElement('th');
   armyCell.colSpan = 2;
   armyCell.className = 'army-header-cell';
+  // Show the army's activation count between the points and the game system.
+  // Cards combined with "Combine similar units" hide how many units there really
+  // are, so this is the unambiguous tally of activations (matching Army Forge).
+  const activations = army.activationCount;
+  const activationsPart =
+    typeof activations === 'number' && activations > 0
+      ? `${activations} ${activations === 1 ? 'activation' : 'activations'} · `
+      : '';
   armyCell.append(
     createTextElement('army-info-name', army.name),
     createTextElement(
       'army-info-meta',
-      `${army.listPoints} / ${army.pointsLimit} pts · ${army.gameSystem.toUpperCase()}`,
+      `${army.listPoints} / ${army.pointsLimit} pts · ${activationsPart}${army.gameSystem.toUpperCase()}`,
     ),
   );
   armyRow.appendChild(armyCell);

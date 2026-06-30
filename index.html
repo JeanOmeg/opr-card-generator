@@ -37,16 +37,21 @@
       </div>
 
       <div class="print-options">
-        <label><input type="checkbox" id="optCombine" checked> Combine similar units</label>
-        <label><input type="checkbox" id="optCustomName"> Use custom unit names</label>
         <label><input type="checkbox" id="optCards" checked> Include cards in print</label>
         <label><input type="checkbox" id="optRules" checked> Include rules table in print</label>
         <label><input type="checkbox" id="optSpells" checked> Include spells table in print</label>
+        <label><input type="checkbox" id="optCustomName" checked> Use custom unit names</label>
+        <label><input type="checkbox" id="optCombine"> Combine similar units</label>
       </div>
 
       <div id="cards" class="cards"></div>
       <div id="special-rules" class="special-rules-section"></div>
       <div id="spells" class="special-rules-section"></div>
+
+      <!-- Onboarding help shown only when no army is loaded. The FAQ content is
+           cloned in here at runtime (see index.ts) so first-time users see it
+           without opening the FAQ page — many never do. -->
+      <div id="home-help" class="home-help" hidden></div>
     </section>
 
     <section id="view-lists" data-view="/lists" hidden>
@@ -107,17 +112,20 @@
 
         <h2 class="faq-q">What does "Combine similar units" do?</h2>
         <p class="faq-a">
-          With this option on (the default), identical single-model units are merged into one card
-          prefixed with their count — three of the same hero show as <strong>3x</strong> on a single
-          card instead of three copies — just like Army Forge. Multi-model units always keep their
-          own card. Uncheck it to show every unit separately.
+          With this option on, identical units are merged into one card prefixed with
+          their count — three of the same unit show as <strong>3x</strong> on a single card instead of
+          three copies, with the model count shown as <strong>[5]</strong> after the name. This works
+          for any unit regardless of model count, and up to three identical units share a card (a
+          fourth starts a new one). Combining is purely cosmetic to save paper — points and loadout
+          stay at the single-unit values. It's off by default, so every unit shows on its own card
+          unless you turn it on.
         </p>
 
         <h2 class="faq-q">What does "Use custom unit names" do?</h2>
         <p class="faq-a">
           With this option on, a unit you've renamed in Army Forge shows that custom name
           (e.g. <strong>Frodo</strong>) as the card title, and the original book name moves to the
-          subtitle. It's off by default, so cards show the default unit name unless you turn it on.
+          subtitle. It's on by default; turn it off to show the default book name as the title.
         </p>
 
         <h2 class="faq-q">How do I print?</h2>

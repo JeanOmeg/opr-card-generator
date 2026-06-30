@@ -129,6 +129,22 @@ body.nav-open .nav-overlay {
   color: #333;
 }
 
+.home-help {
+  max-width: 720px;
+  margin: 24px auto 0;
+}
+
+.home-help[hidden] {
+  display: none;
+}
+
+.home-help-title {
+  font-size: 20px;
+  margin: 0 0 16px;
+  padding-top: 20px;
+  border-top: 1px solid #e2e2e2;
+}
+
 #view-changelog,
 #view-about {
   max-width: 720px;
@@ -508,6 +524,19 @@ body.nav-open .nav-overlay {
   font-weight: bold;
   color: #fff;
   letter-spacing: 0.2px;
+}
+
+.combined-badge {
+  display: inline-block;
+  padding: 0 5px;
+  border-radius: 8px;
+  background: #fff;
+  color: #000;
+  font-size: 9px;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  vertical-align: middle;
 }
 
 .base-info {
