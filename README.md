@@ -1,13 +1,19 @@
-# OPR Card Generator
+# OPR Card Generator — Printable Unit Cards for OnePageRules & Army Forge
 
-A small TypeScript/Parcel web app that turns a shared [Army Forge](https://army-forge.onepagerules.com)
-list into printable, TCG-sized unit cards for [OnePageRules](https://onepagerules.com) games.
+**OPR Card Generator** is a free web app that turns a shared
+[Army Forge](https://army-forge.onepagerules.com) list into printable
+**unit reference cards** for [OnePageRules](https://onepagerules.com) (OPR) games —
+**Grimdark Future**, **Grimdark Future: Firefight**, **Age of Fantasy**,
+**Age of Fantasy: Skirmish**, and others.
 
-Paste a shared army link, get one card per unit (stats, special rules, weapons),
-plus a combined special-rules table and a spells table — ready to print or
-download as PNGs.
+Paste a shared army link and get **one card per unit** (Quality, Defense, Tough,
+special rules, weapons), plus a combined special-rules table and a spells table —
+ready to **print** or **download as PNG**. No sign-up, no install, works in the browser.
 
-**App:** <https://jeanomeg.github.io/opr-card-generator/>
+👉 **Try it now:** <https://jeanomeg.github.io/opr-card-generator/>
+
+*Keywords: OnePageRules unit cards, OPR card generator, Army Forge printable cards,
+Grimdark Future cards, Age of Fantasy datacards, tabletop wargame reference cards.*
 
 > **Note:** a list only loads if you shared it in Army Forge — open your army and
 > click **“Share as Link”** first. Private (unshared) lists cannot be read.

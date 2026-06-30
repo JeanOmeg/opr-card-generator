@@ -390,6 +390,14 @@
     globals "^13.24.0"
     nullthrows "^1.1.1"
 
+"@parcel/packager-raw-url@2.16.4":
+  version "2.16.4"
+  resolved "https://registry.yarnpkg.com/@parcel/packager-raw-url/-/packager-raw-url-2.16.4.tgz#9e6786bacdd5e1a95ab1c41caccf9b8a397e1a68"
+  integrity sha512-qrpsz/wTlPvYM5qnz3N+3pW0a9MRivrN7TiduoS1W1U/UBhsPoOYNG+S6F67KDCmq47mmBKTgEFN9tEazSV+Qw==
+  dependencies:
+    "@parcel/plugin" "2.16.4"
+    "@parcel/utils" "2.16.4"
+
 "@parcel/packager-raw@2.16.4":
   version "2.16.4"
   resolved "https://registry.yarnpkg.com/@parcel/packager-raw/-/packager-raw-2.16.4.tgz#6390274cc7784e037ccb5ad226777beb588d141e"
@@ -637,6 +645,15 @@
   integrity sha512-pB3ZNqgokdkBCJ+4G0BrPYcIkyM9K1HVk0GvjzcLEFDKsoAp8BGEM68FzagFM/nVq9anYTshIaoh349GK0M/bg==
   dependencies:
     "@parcel/plugin" "2.16.4"
+    json5 "^2.2.3"
+
+"@parcel/transformer-jsonld@^2.16.4":
+  version "2.16.4"
+  resolved "https://registry.yarnpkg.com/@parcel/transformer-jsonld/-/transformer-jsonld-2.16.4.tgz#20606ff40359a6523dc812542fb60c7eb11fc7b2"
+  integrity sha512-M8e8YFqaSFPgwhS3eepU11qAppnjx9VQaBrghXY6EYt31fTIY3N77y8tqbTe3/4pJrTI79SbakR6Z1skegET+Q==
+  dependencies:
+    "@parcel/plugin" "2.16.4"
+    "@parcel/types" "2.16.4"
     json5 "^2.2.3"
 
 "@parcel/transformer-node@2.16.4":

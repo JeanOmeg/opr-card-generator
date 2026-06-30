@@ -14,6 +14,8 @@
   },
   "devDependencies": {
     "@netlify/functions": "^5.3.0",
+    "@parcel/packager-raw-url": "2.16.4",
+    "@parcel/transformer-jsonld": "^2.16.4",
     "buffer": "^5.5.0||^6.0.0",
     "concurrently": "^8.2.2",
     "parcel": "^2.12.0",
