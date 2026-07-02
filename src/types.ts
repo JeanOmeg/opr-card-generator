@@ -42,6 +42,14 @@ export interface UpgradeGain {
   count?: number;
 }
 
+// An upgrade option's real cost depends on which unit takes it, so Army Forge
+// ships a `costs` array keyed by unit id, with a flat `cost` as the army-book
+// default used when no per-unit entry matches.
+export interface UpgradeCost {
+  unitId: string;
+  cost: number;
+}
+
 export interface SelectedUpgrade {
   upgrade?: {
     model?: boolean;
@@ -50,6 +58,8 @@ export interface SelectedUpgrade {
   option?: {
     label?: string;
     gains?: UpgradeGain[];
+    cost?: number;
+    costs?: UpgradeCost[];
   };
 }
 
@@ -92,6 +102,10 @@ export interface Unit {
   // Set by us (not Army Forge) when this unit is the result of folding two
   // "Combine Units" halves into one card, so the card can flag itself as combined.
   combinedFromHalves?: boolean;
+  // Set by us when the true total (base + upgrades) has been precomputed — used
+  // for merged units, where each half's upgrades are priced against its own id
+  // and so can't be re-summed against the merged unit's single id.
+  totalCost?: number;
 }
 
 export interface ArmySpecialRule {

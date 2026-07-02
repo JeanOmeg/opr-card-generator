@@ -4,6 +4,7 @@ import { deleteCardImage, getCardImage, saveCardImage } from './db';
 import type {
   ArmySpecialRule,
   ArmyList,
+  SelectedUpgrade,
   Unit,
   UnitRule,
   UpgradeGain,
@@ -105,6 +106,30 @@ function getTough(unit: Unit): string {
 function getBaseLabel(unit: Unit): string {
   const roundBase = unit.bases?.round;
   return roundBase ? `Base ${roundBase} mm` : 'Base ?';
+}
+
+// Army Forge's `unit.cost` is only the base profile cost — the points paid for
+// selected upgrades live on each upgrade option, not folded into the unit total.
+// An option's price depends on which unit takes it, so it ships a `costs` array
+// keyed by unit id; we match this unit's id and fall back to the flat `cost`.
+function getUpgradeCost(unit: Unit, selection: SelectedUpgrade): number {
+  const option = selection.option;
+  if (!option) return 0;
+  const match = Array.isArray(option.costs)
+    ? option.costs.find((entry) => entry.unitId === unit.id)
+    : undefined;
+  if (match && typeof match.cost === 'number') return match.cost;
+  return typeof option.cost === 'number' ? option.cost : 0;
+}
+
+// The true unit total shown on the card: base cost plus every selected upgrade.
+// Merged "Combine Units" halves precompute this into `totalCost` (each half is
+// priced against its own id, so the sum can't be recovered from the merged unit).
+function getUnitTotalCost(unit: Unit): number {
+  if (typeof unit.totalCost === 'number') return unit.totalCost;
+  const base = typeof unit.cost === 'number' ? unit.cost : 0;
+  const selected = Array.isArray(unit.selectedUpgrades) ? unit.selectedUpgrades : [];
+  return base + selected.reduce((sum, sel) => sum + getUpgradeCost(unit, sel), 0);
 }
 
 // --- Small DOM helpers -------------------------------------------------------
@@ -753,6 +778,9 @@ function mergeUnitHalves(host: Unit, joined: Unit[]): Unit {
     ...host,
     size: all.reduce((sum, unit) => sum + (unit.size ?? 0), 0),
     cost: all.reduce((sum, unit) => sum + (unit.cost ?? 0), 0),
+    // Sum each half's true total here — createCard reads `totalCost` directly for
+    // merged units, since the joined half's upgrades are priced against its own id.
+    totalCost: all.reduce((sum, unit) => sum + getUnitTotalCost(unit), 0),
     loadout: all.flatMap((unit) => (Array.isArray(unit.loadout) ? unit.loadout : [])),
     rules,
     selectedUpgrades: all.flatMap((unit) =>
@@ -846,7 +874,7 @@ function createCard(unit: Unit, count = 1, armyId = '', useCustomNames = false):
   const displayName = `${prefix}${baseName} [${unit.size}]`;
   card.dataset.unitName = displayName;
 
-  const costParts = [`${unit.cost} pts`];
+  const costParts = [`${getUnitTotalCost(unit)} pts`];
   if (unit.xp > 0) costParts.push(`XP ${unit.xp}`);
 
   const costElement = createTextElement('card-cost', costParts.join(' · '));

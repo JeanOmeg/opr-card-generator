@@ -1,5 +1,11 @@
 [
   {
+    "date": "July 2, 2026",
+    "items": [
+      "Fixed the **points** on a card showing only the unit's **base cost** and ignoring its upgrades: the card now shows the unit's **real total**, upgrades included — e.g. a **Gecko Champion** with a Starseer Palanquin and Priest upgrade now reads **85 pts** instead of **30 pts**."
+    ]
+  },
+  {
     "date": "June 30, 2026",
     "items": [
       "Units merged with the **Combine Units** rule (two same-type units fielded as one larger unit) now render as a **single card** with their models, points and weapons added together — e.g. two 5-model squads become one **Battle Brothers [10]** card showing both squads' weapons. This always applies, regardless of the **Combine similar units** option.",
