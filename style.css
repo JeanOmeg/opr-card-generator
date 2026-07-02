@@ -332,6 +332,17 @@ body.nav-open .nav-overlay {
   cursor: pointer;
 }
 
+/* On-screen recap of the loaded army, shown beneath the print options so the
+   name / points / activations stay visible while scrolling through the cards. */
+.army-summary:not(:empty) {
+  margin-bottom: 20px;
+  padding: 10px 14px;
+  border: 1px solid #ddd;
+  border-left: 4px solid #000;
+  border-radius: 4px;
+  background: #fafafa;
+}
+
 .cards {
   display: flex;
   flex-wrap: wrap;
@@ -772,6 +783,7 @@ body.nav-open .nav-overlay {
 
   .controls,
   .print-options,
+  .no-print,
   .topbar,
   .nav-drawer,
   .nav-overlay {

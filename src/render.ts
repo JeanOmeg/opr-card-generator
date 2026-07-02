@@ -1009,6 +1009,42 @@ function expandGrantedRules(
   return result;
 }
 
+// The army's points / activations / game system line, shared by the rules and
+// spells table headers and the on-screen summary. "Combine similar units" hides
+// how many units there really are, so the activation tally (matching Army Forge)
+// is the unambiguous count.
+function armyInfoMeta(army: ArmyList): string {
+  const activations = army.activationCount;
+  const activationsPart =
+    typeof activations === 'number' && activations > 0
+      ? `${activations} ${activations === 1 ? 'activation' : 'activations'} · `
+      : '';
+  return `${army.listPoints} / ${army.pointsLimit} pts · ${activationsPart}${army.gameSystem.toUpperCase()}`;
+}
+
+// A table-header cell holding the army name and info line, spanning the table's
+// full width.
+function createArmyHeaderCell(army: ArmyList, colSpan: number): HTMLTableCellElement {
+  const cell = document.createElement('th');
+  cell.colSpan = colSpan;
+  cell.className = 'army-header-cell';
+  cell.append(
+    createTextElement('army-info-name', army.name),
+    createTextElement('army-info-meta', armyInfoMeta(army)),
+  );
+  return cell;
+}
+
+// On-screen summary shown beneath the print options. Repeats the army name and
+// info line so it stays visible while scrolling through many cards. Marked
+// no-print so it never appears on the printed sheet.
+export function renderArmySummary(section: HTMLElement, army: ArmyList): void {
+  section.replaceChildren(
+    createTextElement('army-info-name', army.name),
+    createTextElement('army-info-meta', armyInfoMeta(army)),
+  );
+}
+
 export function renderSpecialRulesTable(section: HTMLElement, army: ArmyList): void {
   section.replaceChildren();
 
@@ -1070,25 +1106,7 @@ export function renderSpecialRulesTable(section: HTMLElement, army: ArmyList): v
   const thead = document.createElement('thead');
 
   const armyRow = document.createElement('tr');
-  const armyCell = document.createElement('th');
-  armyCell.colSpan = 2;
-  armyCell.className = 'army-header-cell';
-  // Show the army's activation count between the points and the game system.
-  // Cards combined with "Combine similar units" hide how many units there really
-  // are, so this is the unambiguous tally of activations (matching Army Forge).
-  const activations = army.activationCount;
-  const activationsPart =
-    typeof activations === 'number' && activations > 0
-      ? `${activations} ${activations === 1 ? 'activation' : 'activations'} · `
-      : '';
-  armyCell.append(
-    createTextElement('army-info-name', army.name),
-    createTextElement(
-      'army-info-meta',
-      `${army.listPoints} / ${army.pointsLimit} pts · ${activationsPart}${army.gameSystem.toUpperCase()}`,
-    ),
-  );
-  armyRow.appendChild(armyCell);
+  armyRow.appendChild(createArmyHeaderCell(army, 2));
   thead.appendChild(armyRow);
 
   if (sorted.length > 0) {
@@ -1134,6 +1152,11 @@ export function renderSpellsTable(section: HTMLElement, army: ArmyList): void {
   table.className = 'special-rules-table spells-table';
 
   const thead = document.createElement('thead');
+
+  const armyRow = document.createElement('tr');
+  armyRow.appendChild(createArmyHeaderCell(army, 3));
+  thead.appendChild(armyRow);
+
   const headerRow = document.createElement('tr');
   for (const text of ['Cost', 'Spell', 'Effect']) {
     const th = document.createElement('th');

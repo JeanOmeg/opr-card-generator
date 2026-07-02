@@ -11,6 +11,7 @@ import {
 } from './src/db';
 import {
   downloadAllCards,
+  renderArmySummary,
   renderCards,
   renderSpecialRulesTable,
   renderSpellsTable,
@@ -35,6 +36,7 @@ const combineUnitsCheckbox = document.getElementById('optCombine') as HTMLInputE
 const customNamesCheckbox = document.getElementById('optCustomName') as HTMLInputElement | null;
 const specialRulesSection = document.getElementById('special-rules');
 const spellsSection = document.getElementById('spells');
+const armySummarySection = document.getElementById('army-summary');
 const listsView = document.getElementById('view-lists');
 const changelogEntries = document.getElementById('changelog-entries');
 const homeHelp = document.getElementById('home-help');
@@ -120,6 +122,7 @@ function setMessage(message: string, type: 'loading' | 'error' | 'empty' = 'empt
   setPrintControlsVisible(false);
   setDocumentTitle();
   cardsContainer.replaceChildren();
+  armySummarySection?.replaceChildren();
   specialRulesSection?.replaceChildren();
   spellsSection?.replaceChildren();
 
@@ -149,6 +152,7 @@ function displayArmy(army: ArmyList, input: string): void {
     setPrintControlsVisible(true);
   }
 
+  if (armySummarySection) renderArmySummary(armySummarySection, army);
   if (specialRulesSection) renderSpecialRulesTable(specialRulesSection, army);
   if (spellsSection) renderSpellsTable(spellsSection, army);
 }
@@ -344,6 +348,7 @@ function resetHome(): void {
   currentInput = '';
   currentArmy = null;
   cardsContainer.replaceChildren();
+  armySummarySection?.replaceChildren();
   specialRulesSection?.replaceChildren();
   spellsSection?.replaceChildren();
   inputElement.value = '';

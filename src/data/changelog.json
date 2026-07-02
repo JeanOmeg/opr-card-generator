@@ -2,6 +2,7 @@
   {
     "date": "July 2, 2026",
     "items": [
+      "The army header (name, points, activations and game system) now also appears above the **spells table**, and a matching **on-screen summary** shows right below the print options so those totals stay visible while you scroll through many cards. The summary is not printed.",
       "Fixed the **points** on a card showing only the unit's **base cost** and ignoring its upgrades: the card now shows the unit's **real total**, upgrades included — e.g. a **Gecko Champion** with a Starseer Palanquin and Priest upgrade now reads **85 pts** instead of **30 pts**."
     ]
   },
